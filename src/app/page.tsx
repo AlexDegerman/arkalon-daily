@@ -1,4 +1,4 @@
-import { CategoryGrid } from './components/home/CategoryGrid'
+import { CategoryGrid } from '@/components/home/CategoryGrid'
 import type { CategoryStatus } from '@/types/puzzle'
 
 // Static placeholder statuses - replaced with live data in Commit 3.5
