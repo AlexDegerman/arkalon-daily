@@ -5,6 +5,7 @@ import { useUiStore } from '@/app/stores/uiStore'
 import { CURRENT_VERSION } from '@/lib/updates'
 import { CATEGORY_ORDER } from '@/constants/categories'
 import { CATEGORIES } from '@/constants/categories'
+import { createProfile } from '@/app/actions/createProfile'
 
 // Shown once when no arkalon_daily_player_id exists in localStorage.
 // Dismiss triggers profile creation (wired in Commit 4.2).
@@ -12,6 +13,7 @@ export function WelcomeModal() {
   const setActiveModal = useUiStore((s) => s.setActiveModal)
   const activeModal = useUiStore((s) => s.activeModal)
   const [visible, setVisible] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     const playerId = localStorage.getItem('arkalon_daily_player_id')
@@ -27,12 +29,25 @@ export function WelcomeModal() {
     }
   }, [setActiveModal])
 
-  const handleDismiss = useCallback(() => {
-    // Profile creation is wired here in Commit 4.2.
-    // For now, record the version and close.
-    localStorage.setItem('arkalon_daily_version', CURRENT_VERSION)
-    setActiveModal(null)
-    setVisible(false)
+  const handleDismiss = useCallback(async () => {
+    setCreating(true)
+    try {
+      // Only create a profile if one does not already exist
+      const existingId = localStorage.getItem('arkalon_daily_player_id')
+      if (!existingId) {
+        const result = await createProfile()
+        if (result.success && result.playerId) {
+          localStorage.setItem('arkalon_daily_player_id', result.playerId)
+        }
+        // If profile creation fails, the modal still closes - the player
+        // will be redirected to home and the modal will show again next visit.
+      }
+      localStorage.setItem('arkalon_daily_version', CURRENT_VERSION)
+    } finally {
+      setCreating(false)
+      setActiveModal(null)
+      setVisible(false)
+    }
   }, [setActiveModal])
 
   if (!visible || activeModal !== 'welcome') return null
@@ -78,9 +93,11 @@ export function WelcomeModal() {
 
         <button
           onClick={handleDismiss}
-          className="w-full rounded-lg bg-accent-recall px-4 py-3 text-sm font-semibold text-bg-base transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-accent-recall"
+          disabled={creating}
+          aria-busy={creating}
+          className="w-full rounded-lg bg-accent-recall px-4 py-3 text-sm font-semibold text-bg-base transition-opacity hover:opacity-90 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-accent-recall"
         >
-          BEGIN
+          {creating ? 'Setting up...' : 'BEGIN'}
         </button>
       </div>
     </div>
