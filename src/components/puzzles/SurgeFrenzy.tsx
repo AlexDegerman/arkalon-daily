@@ -156,13 +156,11 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
         // Session ended - expire remaining active nodes as misses
         setActiveNodes((prev) => {
           prev.forEach((n) => {
-            if (!s.results.find((r) => r.isDecoy === n.isDecoy && false)) {
-              s.results.push({
-                reactionMs: 0,
-                isDecoy: n.isDecoy,
-                consecutiveHitsAtFire: 0
-              })
-            }
+            s.results.push({
+              reactionMs: 0,
+              isDecoy: n.isDecoy,
+              consecutiveHitsAtFire: 0
+            })
           })
           return []
         })

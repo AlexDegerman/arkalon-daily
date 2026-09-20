@@ -18,6 +18,8 @@ export function GlyphSequenceDisplay({
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const postDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (sequence.length === 0) {
@@ -28,29 +30,30 @@ export function GlyphSequenceDisplay({
     const perGlyphMs = displayDurationMs / sequence.length
     let index = 0
 
-    // Brief initial pause before first glyph
     const startDelay = setTimeout(() => {
       setActiveIndex(0)
       index = 1
 
-      const interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         if (index < sequence.length) {
           setActiveIndex(index)
           index++
         } else {
-          clearInterval(interval)
-          // Brief pause after last glyph before transitioning
-          setTimeout(() => {
+          if (intervalRef.current) clearInterval(intervalRef.current)
+          intervalRef.current = null
+          postDelayRef.current = setTimeout(() => {
             setActiveIndex(null)
             onCompleteRef.current()
           }, 300)
         }
       }, perGlyphMs)
-
-      return () => clearInterval(interval)
     }, 400)
 
-    return () => clearTimeout(startDelay)
+    return () => {
+      clearTimeout(startDelay)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (postDelayRef.current) clearTimeout(postDelayRef.current)
+    }
   }, [sequence, displayDurationMs])
 
   return (

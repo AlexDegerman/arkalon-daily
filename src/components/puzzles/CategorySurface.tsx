@@ -13,20 +13,16 @@ import { SniperChallenge } from './SniperChallenge'
 import { WildPrediction } from './WildPrediction'
 import { CrystalMine } from './CrystalMine'
 import { getDailyChallenge } from '@/app/actions/getDailyChallenge'
+import { getTrialChallenge } from '@/app/actions/getTrialChallenge'
 import { completeTrial } from '@/app/actions/completeTrial'
 import { submitResult } from '@/app/actions/submitResult'
 import { usePuzzleStore } from '@/app/stores/puzzleStore'
 import { useUiStore } from '@/app/stores/uiStore'
 import { speakArkalon } from '@/lib/arkalonTTS'
-import { getResultTTSLine, TTS_LINES } from '@/lib/ttsLines'
 import { useSound } from '@/hooks/useSound'
 import { getScoreTierClass } from '@/lib/format'
 import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
-import { ArkalonVisionFamily } from '@/lib/puzzles/families/arkalonVision'
-import { SurgeFrenzyFamily } from '@/lib/puzzles/families/surgeFrenzy'
-import { SniperChallengeFamily } from '@/lib/puzzles/families/sniperChallenge'
-import { WildPredictionFamily } from '@/lib/puzzles/families/wildPrediction'
-import { CrystalMineFamily } from '@/lib/puzzles/families/crystalMine'
+import { FAMILY_META } from '@/constants/familyMeta'
 import type { ArkalonVisionData } from '@/lib/puzzles/families/arkalonVision'
 import type { SurgeFrenzyData } from '@/lib/puzzles/families/surgeFrenzy'
 import type { SniperChallengeData } from '@/lib/puzzles/families/sniperChallenge'
@@ -41,8 +37,7 @@ import type {
   PuzzleCategory,
   CategoryStatus,
   DailyPuzzleInfo,
-  PuzzleSeedData,
-  PuzzleFamilyDefinition
+  PuzzleSeedData
 } from '@/types/puzzle'
 
 type SurfacePhase =
@@ -102,22 +97,6 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [recoveryTutorialShown, setRecoveryTutorialShown] = useState(true)
   const [playerName, setPlayerName] = useState<string>('Player')
 
-  // Resolve family definition from category
-  const familyDefForCategory = useCallback((): PuzzleFamilyDefinition => {
-    switch (category) {
-      case 'recall':
-        return ArkalonVisionFamily
-      case 'surge':
-        return SurgeFrenzyFamily
-      case 'strike':
-        return SniperChallengeFamily
-      case 'cipher':
-        return WildPredictionFamily
-      case 'depths':
-        return CrystalMineFamily
-    }
-  }, [category])
-
   const playerIdRef = useRef<string | null>(null)
 
   // Retrieve playerId from localStorage
@@ -175,7 +154,13 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
       const needsTrial = !res.trialsCompleted?.includes(category)
       if (needsTrial) {
-        setPhase('trial-explainer')
+        // Load trial-specific challenge from fixed trial seed
+        getTrialChallenge(playerId, category).then((trialRes) => {
+          if (trialRes.success && trialRes.seedData) {
+            setSeedData(trialRes.seedData)
+          }
+          setPhase('trial-explainer')
+        })
       } else {
         setPhase('playing')
         setIsTrial(false)
@@ -458,7 +443,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   }
 
   if (phase === 'result') {
-    const familyDef = familyDefForCategory()
+    const familyMeta = FAMILY_META[category]
     const allStatuses = buildPlaceholderStatuses(
       category,
       resultStatus,
@@ -514,12 +499,12 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
             <ResultScreen
               category={category}
               playerName={playerName}
-              familyName={familyDef.displayName}
+              familyName={familyMeta.displayName}
               familyIndex={puzzleInfo?.familyIndex ?? 0}
               score={resultScore}
               status={resultStatus}
               elapsedMs={resultElapsedMs}
-              metricDefinitions={familyDef.resultMetrics}
+              metricDefinitions={familyMeta.resultMetrics}
               metricValues={resultMetrics}
               streakDays={streakDays}
               allStatuses={allStatuses}
@@ -552,7 +537,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     )
   }
 
-  const activeFamilyDef = familyDefForCategory()
+  const activeFamilyMeta = FAMILY_META[category]
 
   function renderPuzzle() {
     if (!seedData) return null
@@ -604,7 +589,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     <div className="flex min-h-dvh flex-col">
       <GameHeader
         category={category}
-        familyName={activeFamilyDef.displayName}
+        familyName={activeFamilyMeta.displayName}
         familyIndex={puzzleInfo?.familyIndex}
       />
       <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-4 py-4">

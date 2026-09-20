@@ -5,13 +5,9 @@ import type { PuzzleCategory } from '@/types/puzzle'
 // Fixed seeds for trial runs. These create deterministic challenges without
 // using the daily HMAC seed.
 export const TRIAL_SEEDS: Record<PuzzleCategory, string> = {
-  recall: 'trial_recall__fixed_seed_0000000000000000000000000000000000000000',
-  surge: 'trial_surge___fixed_seed_0000000000000000000000000000000000000000',
-  cipher: 'trial_cipher__fixed_seed_0000000000000000000000000000000000000000',
-  strike: 'trial_strike__fixed_seed_0000000000000000000000000000000000000000',
-  depths: 'trial_depths__fixed_seed_0000000000000000000000000000000000000000'
-}
-
-export function isTrialSeed(seed: string): boolean {
-  return seed.startsWith('trial_')
+  recall: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+  surge: 'b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1',
+  cipher: 'c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2',
+  strike: 'd4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3',
+  depths: 'e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4'
 }
