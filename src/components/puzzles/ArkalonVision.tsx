@@ -1,0 +1,233 @@
+'use client'
+
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { GlyphSequenceDisplay } from './GlyphSequenceDisplay'
+import { GlyphKeypad } from './GlyphKeypad'
+import { TrialBanner } from '@/components/trial/TrialBanner'
+import { useSound } from '@/hooks/useSound'
+import { useUiStore } from '@/app/stores/uiStore'
+import { speakArkalon } from '@/lib/arkalonTTS'
+import { CATEGORIES } from '@/constants/categories'
+import type {
+  ArkalonVisionData,
+  ArkalonVisionRound
+} from '@/lib/puzzles/families/arkalonVision'
+
+type RoundPhase = 'display' | 'input' | 'feedback' | 'complete'
+
+interface RoundState {
+  roundIndex: number
+  phase: RoundPhase
+  entered: string[]
+  errors: number
+  startMs: number
+}
+
+export interface ArkalonVisionResult {
+  rounds: {
+    correctGlyphs: number
+    sequenceLength: number
+    elapsedMs: number
+    errors: number
+  }[]
+  totalElapsedMs: number
+}
+
+interface ArkalonVisionProps {
+  data: ArkalonVisionData
+  isTrial: boolean
+  onComplete: (result: ArkalonVisionResult) => void
+}
+
+const CATEGORY = 'recall' as const
+
+export function ArkalonVision({
+  data,
+  isTrial,
+  onComplete
+}: ArkalonVisionProps) {
+  const { play } = useSound()
+  const arkalonTTSEnabled = useUiStore((s) => s.arkalonTTSEnabled)
+  const arkalonVolume = useUiStore((s) => s.arkalonVolume)
+
+  const [roundState, setRoundState] = useState<RoundState>({
+    roundIndex: 0,
+    phase: 'display',
+    entered: [],
+    errors: 0,
+    startMs: 0
+  })
+
+  const sessionStartMs = useRef(Date.now())
+  const roundResults = useRef<ArkalonVisionResult['rounds']>([])
+
+  const currentRound: ArkalonVisionRound | undefined =
+    data.rounds[roundState.roundIndex]
+
+  // TTS on mount
+  useEffect(() => {
+    if (arkalonTTSEnabled) {
+      speakArkalon(CATEGORIES[CATEGORY].arkalonLine, arkalonVolume)
+    }
+  }, [arkalonTTSEnabled, arkalonVolume])
+
+  // Persist turn-based state to localStorage on each meaningful change
+  useEffect(() => {
+    if (isTrial) return
+    try {
+      localStorage.setItem(
+        'arkalon_daily_recall_session',
+        JSON.stringify({
+          roundIndex: roundState.roundIndex,
+          phase: roundState.phase,
+          date: new Date().toISOString().slice(0, 10)
+        })
+      )
+    } catch {
+      // localStorage unavailable - silently ignore
+    }
+  }, [roundState.roundIndex, roundState.phase, isTrial])
+
+  const handleDisplayComplete = useCallback(() => {
+    setRoundState((prev) => ({
+      ...prev,
+      phase: 'input',
+      entered: [],
+      startMs: Date.now()
+    }))
+  }, [])
+
+  const handleGlyphPress = useCallback(
+    (glyph: string) => {
+      if (!currentRound || roundState.phase !== 'input') return
+
+      const sequence = data.reverseEntry
+        ? [...currentRound.sequence].reverse()
+        : currentRound.sequence
+
+      const nextIndex = roundState.entered.length
+      const expected = sequence[nextIndex]
+      const isCorrect = glyph === expected
+
+      if (!isCorrect) {
+        play('incorrect')
+        setRoundState((prev) => ({ ...prev, errors: prev.errors + 1 }))
+      } else {
+        play('correct')
+      }
+
+      const newEntered = [...roundState.entered, glyph]
+
+      // Round complete when all glyphs entered
+      if (newEntered.length >= sequence.length) {
+        const elapsedMs = Date.now() - roundState.startMs
+        const correctGlyphs = newEntered.filter(
+          (g, i) => g === sequence[i]
+        ).length
+
+        roundResults.current.push({
+          correctGlyphs,
+          sequenceLength: sequence.length,
+          elapsedMs,
+          errors: roundState.errors + (isCorrect ? 0 : 1)
+        })
+
+        play('round-complete')
+
+        setRoundState((prev) => ({
+          ...prev,
+          entered: newEntered,
+          phase: 'feedback',
+          errors: prev.errors + (isCorrect ? 0 : 1)
+        }))
+
+        // Advance to next round or complete
+        setTimeout(() => {
+          const nextRoundIndex = roundState.roundIndex + 1
+          if (nextRoundIndex < data.rounds.length) {
+            setRoundState({
+              roundIndex: nextRoundIndex,
+              phase: 'display',
+              entered: [],
+              errors: 0,
+              startMs: 0
+            })
+          } else {
+            // All rounds complete
+            const totalElapsedMs = Date.now() - sessionStartMs.current
+            onComplete({
+              rounds: roundResults.current,
+              totalElapsedMs
+            })
+          }
+        }, 800)
+      } else {
+        setRoundState((prev) => ({
+          ...prev,
+          entered: newEntered,
+          errors: prev.errors + (isCorrect ? 0 : 1)
+        }))
+      }
+    },
+    [
+      currentRound,
+      roundState,
+      data.reverseEntry,
+      data.rounds.length,
+      play,
+      onComplete
+    ]
+  )
+
+  if (!currentRound) return null
+
+  const sequence = data.reverseEntry
+    ? [...currentRound.sequence].reverse()
+    : currentRound.sequence
+
+  return (
+    <div className="flex w-full flex-col gap-4">
+      {isTrial && <TrialBanner />}
+
+      {/* Round progress */}
+      <div className="flex items-center justify-between text-xs text-text-muted">
+        <span>
+          Round {roundState.roundIndex + 1} of {data.rounds.length}
+        </span>
+        {data.reverseEntry &&
+          roundState.roundIndex === data.rounds.length - 1 && (
+            <span className="text-accent-cipher">Reverse entry</span>
+          )}
+      </div>
+
+      {/* Puzzle surface */}
+      <div className="w-full rounded-xl border border-border-subtle bg-surface-panel p-4">
+        {roundState.phase === 'display' && (
+          <GlyphSequenceDisplay
+            sequence={currentRound.sequence}
+            displayDurationMs={currentRound.displayDurationMs}
+            onComplete={handleDisplayComplete}
+          />
+        )}
+
+        {(roundState.phase === 'input' || roundState.phase === 'feedback') && (
+          <div className="flex flex-col gap-4">
+            {data.reverseEntry &&
+              roundState.roundIndex === data.rounds.length - 1 && (
+                <p className="text-center text-xs text-text-muted">
+                  Enter the sequence in reverse order
+                </p>
+              )}
+            <GlyphKeypad
+              glyphs={currentRound.keypadOrder}
+              onGlyphPress={handleGlyphPress}
+              disabled={roundState.phase === 'feedback'}
+              enteredGlyphs={roundState.entered}
+              expectedLength={sequence.length}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
