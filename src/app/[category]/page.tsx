@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { CATEGORY_ORDER } from '@/constants/categories'
 import type { PuzzleCategory } from '@/types/puzzle'
-import { GameHeader } from '@/components/layout/GameHeader'
+import { CategorySurface } from '@/components/puzzles/CategorySurface'
 
 interface CategoryPageProps {
   params: { category: string }
@@ -18,15 +18,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
     notFound()
   }
 
-  return (
-    <div className="relative flex min-h-dvh flex-col">
-      <GameHeader category={slug} />
-      <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-4 py-4">
-        {/* Puzzle surface mounted here in Commit 3.5 */}
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading puzzle...</p>
-        </div>
-      </main>
-    </div>
-  )
+  // CategorySurface is a client component that handles player ID retrieval,
+  // challenge loading, trial flow, puzzle rendering, and result submission.
+  return <CategorySurface category={slug} />
 }
