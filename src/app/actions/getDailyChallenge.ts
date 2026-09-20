@@ -12,6 +12,7 @@ import type {
   PuzzleSeedData,
   DailyPuzzleInfo
 } from '@/types/puzzle'
+import { getFamily } from '@/lib/puzzles/familyRegistry'
 
 const Schema = z.object({
   playerId: z.string().uuid(),
@@ -26,16 +27,6 @@ export interface DailyChallengeResponse {
   alreadyPlayed?: boolean
   trialsCompleted?: string[]
   streakDays?: number
-}
-
-// Family map - extended in Commit 5.5 when all families exist
-function getFamilyDefinition(familyId: string) {
-  switch (familyId) {
-    case 'arkalon_vision':
-      return ArkalonVisionFamily
-    default:
-      return null
-  }
 }
 
 export async function getDailyChallenge(
@@ -63,7 +54,7 @@ export async function getDailyChallenge(
     const todayUtc = getUtcDateString()
     const existingResult = await client.query(
       `SELECT normalized_score FROM daily_results
-       WHERE player_id = $1 AND puzzle_date = $2 AND category = $3`,
+        WHERE player_id = $1 AND puzzle_date = $2 AND category = $3`,
       [playerId, todayUtc, category]
     )
     if (existingResult.rows.length > 0) {
@@ -94,7 +85,7 @@ export async function getDailyChallenge(
     const puzzle = puzzleRow.rows[0]
 
     // Generate resolved seed data server-side - seed never leaves the server
-    const family = getFamilyDefinition(puzzle.puzzle_family_id)
+    const family = getFamily(puzzle.puzzle_family_id)
     if (!family) {
       return { success: false, error: 'Unknown puzzle family' }
     }

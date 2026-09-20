@@ -7,6 +7,10 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { TrialExplainer } from '@/components/trial/TrialExplainer'
 import { ResultScreen } from '@/components/result/ResultScreen'
 import { ArkalonVision } from './ArkalonVision'
+import { SurgeFrenzy } from './SurgeFrenzy'
+import { SniperChallenge } from './SniperChallenge'
+import { WildPrediction } from './WildPrediction'
+import { CrystalMine } from './CrystalMine'
 import { getDailyChallenge } from '@/app/actions/getDailyChallenge'
 import { completeTrial } from '@/app/actions/completeTrial'
 import { submitResult } from '@/app/actions/submitResult'
@@ -15,16 +19,29 @@ import { useUiStore } from '@/app/stores/uiStore'
 import { speakArkalon } from '@/lib/arkalonTTS'
 import { useSound } from '@/hooks/useSound'
 import { getScoreTierClass } from '@/lib/format'
-import { CATEGORIES } from '@/constants/categories'
+import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
+import { ArkalonVisionFamily } from '@/lib/puzzles/families/arkalonVision'
+import { SurgeFrenzyFamily } from '@/lib/puzzles/families/surgeFrenzy'
+import { SniperChallengeFamily } from '@/lib/puzzles/families/sniperChallenge'
+import { WildPredictionFamily } from '@/lib/puzzles/families/wildPrediction'
+import { CrystalMineFamily } from '@/lib/puzzles/families/crystalMine'
 import type { ArkalonVisionData } from '@/lib/puzzles/families/arkalonVision'
+import type { SurgeFrenzyData } from '@/lib/puzzles/families/surgeFrenzy'
+import type { SniperChallengeData } from '@/lib/puzzles/families/sniperChallenge'
+import type { WildPredictionData } from '@/lib/puzzles/families/wildPrediction'
+import type { CrystalMineData } from '@/lib/puzzles/families/crystalMine'
 import type { ArkalonVisionResult } from './ArkalonVision'
+import type { SurgeFrenzyResult } from './SurgeFrenzy'
+import type { SniperChallengeResult } from './SniperChallenge'
+import type { WildPredictionResult } from './WildPrediction'
+import type { CrystalMineResult } from './CrystalMine'
 import type {
   PuzzleCategory,
   CategoryStatus,
   DailyPuzzleInfo,
-  PuzzleSeedData
+  PuzzleSeedData,
+  PuzzleFamilyDefinition
 } from '@/types/puzzle'
-import { CATEGORY_ORDER } from '@/constants/categories'
 
 type SurfacePhase =
   | 'loading'
@@ -78,6 +95,22 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [rawMetrics, setRawMetrics] = useState<
     Parameters<typeof submitResult>[0]['familyMetrics'] | null
   >(null)
+
+  // Resolve family definition from category
+  const familyDefForCategory = useCallback((): PuzzleFamilyDefinition => {
+    switch (category) {
+      case 'recall':
+        return ArkalonVisionFamily
+      case 'surge':
+        return SurgeFrenzyFamily
+      case 'strike':
+        return SniperChallengeFamily
+      case 'cipher':
+        return WildPredictionFamily
+      case 'depths':
+        return CrystalMineFamily
+    }
+  }, [category])
 
   const playerIdRef = useRef<string | null>(null)
 
@@ -138,65 +171,37 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     setPhase('playing')
   }, [])
 
-  // Called when any puzzle variant completes with its raw result
-  const handleRecallComplete = useCallback(
-    async (result: ArkalonVisionResult) => {
+  /// Shared submission handler used by all category completions
+  const handleSubmit = useCallback(
+    async (
+      metrics: Parameters<typeof submitResult>[0]['familyMetrics'],
+      displayMetrics: Record<string, unknown>,
+      previewScore?: number
+    ) => {
       if (!puzzleInfo || !playerIdRef.current) return
 
-      const metrics = {
-        family: 'arkalon_vision' as const,
-        rounds: result.rounds,
-        totalElapsedMs: result.totalElapsedMs
-      }
-
-      setResultElapsedMs(result.totalElapsedMs)
-      setRawMetrics(metrics)
+      setResultElapsedMs(metrics.totalElapsedMs)
 
       if (isTrial) {
-        // Trial complete - mark trial and show trial result prompt
         const pid = playerIdRef.current
         await completeTrial(pid, category)
         setTrialsCompleted((prev) => [...prev, category])
-
-        // Compute a client-side preview score for trial display only
-        // (not submitted; server will recompute on real submission)
-        const previewScore = Math.max(
-          0,
-          Math.round(
-            result.rounds.reduce((sum, r, i) => {
-              const weight = [35, 30, 35][i] ?? 30
-              return sum + (r.correctGlyphs / r.sequenceLength) * weight
-            }, 0)
-          )
-        )
-
-        setResultScore(previewScore)
-        setResultStatus(previewScore >= 15 ? 'solved' : 'failed')
-        setResultMetrics({
-          accuracyPercent: Math.round(
-            (result.rounds.reduce((s, r) => s + r.correctGlyphs, 0) /
-              result.rounds.reduce((s, r) => s + r.sequenceLength, 0)) *
-              100
-          ),
-          maxSequence: Math.max(...result.rounds.map((r) => r.sequenceLength)),
-          errors: result.rounds.reduce((s, r) => s + r.errors, 0),
-          completionTimeMs: result.totalElapsedMs,
-          isTrial: true
-        })
+        const ps = previewScore ?? 50
+        setResultScore(ps)
+        setResultStatus(ps >= 15 ? 'solved' : 'failed')
+        setResultMetrics({ ...displayMetrics, isTrial: true })
         setPhase('result')
         return
       }
 
-      // Real submission
       setPhase('submitting')
       const pid = playerIdRef.current
-
       const res = await submitResult({
         playerId: pid,
         category,
         puzzleFamilyId: puzzleInfo.puzzleFamilyId,
         puzzleDate: puzzleInfo.puzzleDate,
-        elapsedMs: result.totalElapsedMs,
+        elapsedMs: metrics.totalElapsedMs,
         familyMetrics: metrics
       })
 
@@ -209,13 +214,11 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       const score = res.normalizedScore ?? 0
       const status = res.status ?? 'failed'
 
-      // Play result sound
       if (score >= 90) play('result-legendary')
       else if (score >= 70) play('result-epic')
       else if (score >= 50) play('result-rare')
       else play('result-common')
 
-      // TTS result line
       if (arkalonTTSEnabled) {
         if (score >= 96)
           speakArkalon('Exceptional... performance... recorded.', arkalonVolume)
@@ -234,20 +237,134 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       setResultScore(score)
       setResultStatus(status)
       setStreakDays(res.currentStreak ?? 0)
-      setResultMetrics({
-        accuracyPercent: Math.round(
-          (result.rounds.reduce((s, r) => s + r.correctGlyphs, 0) /
-            result.rounds.reduce((s, r) => s + r.sequenceLength, 0)) *
-            100
-        ),
-        maxSequence: Math.max(...result.rounds.map((r) => r.sequenceLength)),
-        errors: result.rounds.reduce((s, r) => s + r.errors, 0),
-        completionTimeMs: result.totalElapsedMs
-      })
-
+      setResultMetrics(displayMetrics)
       setPhase('result')
     },
     [puzzleInfo, isTrial, category, play, arkalonTTSEnabled, arkalonVolume]
+  )
+
+  // Per-family completion handlers
+
+  const handleRecallComplete = useCallback(
+    (result: ArkalonVisionResult) => {
+      const total = result.rounds.reduce((s, r) => s + r.sequenceLength, 0)
+      const correct = result.rounds.reduce((s, r) => s + r.correctGlyphs, 0)
+      const preview = Math.max(
+        0,
+        Math.round(
+          result.rounds.reduce((sum, r, i) => {
+            const w = [35, 30, 35][i] ?? 30
+            return sum + (r.correctGlyphs / r.sequenceLength) * w
+          }, 0)
+        )
+      )
+      handleSubmit(
+        {
+          family: 'arkalon_vision',
+          rounds: result.rounds,
+          totalElapsedMs: result.totalElapsedMs
+        },
+        {
+          accuracyPercent: total > 0 ? Math.round((correct / total) * 100) : 0,
+          maxSequence: Math.max(...result.rounds.map((r) => r.sequenceLength)),
+          errors: result.rounds.reduce((s, r) => s + r.errors, 0),
+          completionTimeMs: result.totalElapsedMs
+        },
+        preview
+      )
+    },
+    [handleSubmit]
+  )
+
+  const handleSurgeComplete = useCallback(
+    (result: SurgeFrenzyResult) => {
+      handleSubmit(
+        {
+          family: 'surge_frenzy',
+          nodes: result.nodes,
+          expectedNodeCount: result.expectedNodeCount,
+          totalElapsedMs: result.totalElapsedMs
+        },
+        {
+          avgReactionMs: result.avgReactionMs,
+          correctTaps: result.correctTaps,
+          misses: result.misses,
+          bestCombo: result.bestCombo
+        },
+        Math.round(
+          (result.correctTaps / Math.max(1, result.expectedNodeCount)) * 100
+        )
+      )
+    },
+    [handleSubmit]
+  )
+
+  const handleStrikeComplete = useCallback(
+    (result: SniperChallengeResult) => {
+      handleSubmit(
+        {
+          family: 'sniper_challenge',
+          shots: result.shots,
+          totalElapsedMs: result.totalElapsedMs
+        },
+        {
+          perfectHits: result.perfectHits,
+          excellentHits: result.excellentHits,
+          accuracyPct: result.accuracyPct,
+          avgDeviation: result.avgDeviation,
+          totalShots: result.totalShots
+        },
+        result.accuracyPct
+      )
+    },
+    [handleSubmit]
+  )
+
+  const handleCipherComplete = useCallback(
+    (result: WildPredictionResult) => {
+      handleSubmit(
+        {
+          family: 'wild_prediction',
+          correctRounds: result.correctRounds,
+          totalRounds: result.totalRounds,
+          totalIncorrectGuesses: result.totalIncorrectGuesses,
+          totalElapsedMs: result.totalElapsedMs
+        },
+        {
+          correctPct: Math.round(
+            (result.correctRounds / result.totalRounds) * 100
+          ),
+          roundsCompleted: result.roundsCompleted,
+          avgResponseMs: result.avgResponseMs,
+          totalErrors: result.totalIncorrectGuesses
+        },
+        Math.round((result.correctRounds / result.totalRounds) * 80)
+      )
+    },
+    [handleSubmit]
+  )
+
+  const handleDepthsComplete = useCallback(
+    (result: CrystalMineResult) => {
+      handleSubmit(
+        {
+          family: 'crystal_mine',
+          depositsFound: result.depositsFound,
+          totalDeposits: result.totalDeposits,
+          chargesUsed: result.chargesUsed,
+          chargeLimit: result.chargeLimit,
+          totalElapsedMs: result.totalElapsedMs
+        },
+        {
+          depositsFound: result.depositsFound,
+          chargesUsed: result.chargesUsed,
+          efficiencyPct: result.efficiencyPct,
+          completionTimeMs: result.totalElapsedMs
+        },
+        Math.round((result.depositsFound / result.totalDeposits) * 80)
+      )
+    },
+    [handleSubmit]
   )
 
   const cat = CATEGORIES[category]
@@ -317,7 +434,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   }
 
   if (phase === 'result') {
-    const familyDef = ArkalonVisionFamily
+    const familyDef = familyDefForCategory()
     const allStatuses = buildPlaceholderStatuses(
       category,
       resultStatus,
@@ -372,11 +489,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           ) : (
             <ResultScreen
               category={category}
-              familyName={
-                puzzleInfo?.puzzleFamilyId
-                  ? familyDef.displayName
-                  : cat.displayName
-              }
+              familyName={familyDef.displayName}
               familyIndex={puzzleInfo?.familyIndex ?? 0}
               score={resultScore}
               status={resultStatus}
@@ -394,8 +507,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   }
 
   // phase === 'playing'
-  const visionData = seedData?.familyData as unknown as ArkalonVisionData | null
-  if (!visionData) {
+  if (!seedData) {
     return (
       <div className="flex min-h-dvh flex-col">
         <GameHeader category={category} />
@@ -406,28 +518,63 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     )
   }
 
+  const activeFamilyDef = familyDefForCategory()
+
+  function renderPuzzle() {
+    if (!seedData) return null
+    switch (category) {
+      case 'recall':
+        return (
+          <ArkalonVision
+            data={seedData.familyData as unknown as ArkalonVisionData}
+            isTrial={isTrial}
+            onComplete={handleRecallComplete}
+          />
+        )
+      case 'surge':
+        return (
+          <SurgeFrenzy
+            data={seedData.familyData as unknown as SurgeFrenzyData}
+            isTrial={isTrial}
+            onComplete={handleSurgeComplete}
+          />
+        )
+      case 'strike':
+        return (
+          <SniperChallenge
+            data={seedData.familyData as unknown as SniperChallengeData}
+            isTrial={isTrial}
+            onComplete={handleStrikeComplete}
+          />
+        )
+      case 'cipher':
+        return (
+          <WildPrediction
+            data={seedData.familyData as unknown as WildPredictionData}
+            isTrial={isTrial}
+            onComplete={handleCipherComplete}
+          />
+        )
+      case 'depths':
+        return (
+          <CrystalMine
+            data={seedData.familyData as unknown as CrystalMineData}
+            isTrial={isTrial}
+            onComplete={handleDepthsComplete}
+          />
+        )
+    }
+  }
+
   return (
     <div className="flex min-h-dvh flex-col">
       <GameHeader
         category={category}
-        familyName={ArkalonVisionFamily.displayName}
+        familyName={activeFamilyDef.displayName}
         familyIndex={puzzleInfo?.familyIndex}
       />
       <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-4 py-4">
-        {category === 'recall' && (
-          <ArkalonVision
-            data={visionData}
-            isTrial={isTrial}
-            onComplete={handleRecallComplete}
-          />
-        )}
-        {category !== 'recall' && (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-text-muted">
-              {cat.displayName} puzzle coming soon.
-            </p>
-          </div>
-        )}
+        {renderPuzzle()}
       </main>
     </div>
   )

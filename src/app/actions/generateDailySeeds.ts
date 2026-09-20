@@ -7,21 +7,10 @@ import { deriveDailySeed, getUtcDateString } from '@/lib/puzzles/hmac'
 import { generateWithValidation } from '@/lib/puzzles/validateChallenge'
 import { CATEGORY_ORDER } from '@/constants/categories'
 import type { PuzzleCategory } from '@/types/puzzle'
-
-// Lazily loads the registry to avoid circular dependencies during initialization.
-let familyRegistry: Map<
-  string,
-  import('@/types/puzzle').PuzzleFamilyDefinition
-> | null = null
-
-async function getRegistry() {
-  if (!familyRegistry) {
-    // Dynamically imported to avoid circular dependency during phased build.
-    const mod = await import('@/lib/puzzles/familyRegistry').catch(() => null)
-    familyRegistry = mod?.FAMILY_REGISTRY ?? null
-  }
-  return familyRegistry
-}
+import {
+  FAMILY_REGISTRY,
+  CATEGORY_FAMILY_MAP
+} from '@/lib/puzzles/familyRegistry'
 
 export interface GenerateDailySeedsResult {
   generated: number
@@ -35,7 +24,7 @@ export async function generateDailySeeds(
   puzzleDate?: string
 ): Promise<GenerateDailySeedsResult> {
   const date = puzzleDate ?? getUtcDateString()
-  const registry = await getRegistry()
+  const registry = FAMILY_REGISTRY
 
   let generated = 0
   let skipped = 0
@@ -70,7 +59,7 @@ export async function generateDailySeeds(
 
         // Resolves the puzzle family assigned to this category.
         // Each category currently maps to a single family.
-        const familyId = getCategoryFamilyId(category)
+        const familyId = CATEGORY_FAMILY_MAP[category]
         let seedData: import('@/types/puzzle').PuzzleSeedData | null = null
 
         if (registry) {
@@ -102,16 +91,4 @@ export async function generateDailySeeds(
   }
 
   return { generated, skipped, errors }
-}
-
-// Returns the canonical family ID assigned to a category.
-function getCategoryFamilyId(category: PuzzleCategory): string {
-  const map: Record<PuzzleCategory, string> = {
-    recall: 'arkalon_vision',
-    surge: 'surge_frenzy',
-    cipher: 'wild_prediction',
-    strike: 'sniper_challenge',
-    depths: 'crystal_mine'
-  }
-  return map[category]
 }
