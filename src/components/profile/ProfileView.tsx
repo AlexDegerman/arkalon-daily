@@ -9,6 +9,7 @@ import { SkillProfile } from './SkillProfile'
 import { CategoryStatsPanel } from './CategoryStatsPanel'
 import { RecoveryCodeSection } from './RecoveryCodeSection'
 import { formatDateTime } from '@/lib/format'
+import { CATEGORY_ORDER } from '@/constants/categories'
 
 interface ProfileViewProps {
   profile: PlayerProfile
@@ -16,10 +17,14 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ profile, stats }: ProfileViewProps) {
-  // Build average score map for the skill profile (min 3 submissions enforced server-side)
+  // Build average score map for skill profile - only show categories with >= 3 submissions
   const averageScores = Object.fromEntries(
-    stats.map((s) => [s.category as PuzzleCategory, s.averageScore])
+    stats
+      .filter((s) => s.daysPlayed >= 3)
+      .map((s) => [s.category as PuzzleCategory, s.averageScore])
   ) as Partial<Record<PuzzleCategory, number>>
+
+  const totalDaysPlayed = stats.reduce((sum, s) => sum + s.daysPlayed, 0)
 
   const displayName =
     profile.displayName ??
@@ -38,8 +43,14 @@ export function ProfileView({ profile, stats }: ProfileViewProps) {
           </div>
           <div>
             <p className="font-semibold text-text-primary">{displayName}</p>
-            <p className="text-xs text-text-muted">
+            <p className="mt-1 text-xs text-text-muted">
               Playing since {formatDateTime(profile.createdAt)}
+              {totalDaysPlayed > 0 && (
+                <span className="ml-2">
+                  &middot; {totalDaysPlayed} total{' '}
+                  {totalDaysPlayed === 1 ? 'puzzle' : 'puzzles'} played
+                </span>
+              )}
             </p>
           </div>
         </div>
