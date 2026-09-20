@@ -38,6 +38,12 @@ export function WelcomeModal() {
         const result = await createProfile()
         if (result.success && result.playerId) {
           localStorage.setItem('arkalon_daily_player_id', result.playerId)
+          if (result.displayName) {
+            localStorage.setItem(
+              'arkalon_daily_display_name',
+              result.displayName
+            )
+          }
         }
         // If profile creation fails, the modal still closes - the player
         // will be redirected to home and the modal will show again next visit.

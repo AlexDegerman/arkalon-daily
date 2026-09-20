@@ -4,13 +4,15 @@ import Link from 'next/link'
 import type {
   PuzzleCategory,
   CategoryStatus,
-  ResultMetricDefinition
+  ResultMetricDefinition,
+  ShareResult
 } from '@/types/puzzle'
 import { CATEGORIES } from '@/constants/categories'
 import { getScoreTierClass, getScoreRarity } from '@/lib/format'
 import { CategoryMetrics } from './CategoryMetrics'
 import { ContinuationPanel } from './ContinuationPanel'
 import { NetworkRecommendation } from './NetworkRecommendation'
+import { ShareResultButton } from '@/components/share/ShareResultButton'
 
 interface ResultScreenProps {
   category: PuzzleCategory
@@ -29,6 +31,7 @@ interface ResultScreenProps {
   averageScore?: number
   streakDays: number
   allStatuses: CategoryStatus[]
+  playerName?: string
 }
 
 const SCORE_LABEL: { min: number; label: string }[] = [
@@ -61,6 +64,7 @@ export function ResultScreen({
   familyIndex,
   score,
   status,
+  elapsedMs,
   metricDefinitions,
   metricValues,
   rank,
@@ -69,7 +73,8 @@ export function ResultScreen({
   personalBest,
   averageScore,
   streakDays,
-  allStatuses
+  allStatuses,
+  playerName
 }: ResultScreenProps) {
   const cat = CATEGORIES[category]
   const tierClass = getScoreTierClass(score)
@@ -168,14 +173,22 @@ export function ResultScreen({
         </div>
       </div>
 
-      {/* Share - wired in Commit 7.1 */}
-      <button
-        disabled
-        aria-label="Share result (coming soon)"
-        className="w-full rounded-lg border border-border-subtle px-4 py-3 text-sm font-semibold tracking-wider text-text-muted opacity-40"
-      >
-        [ SHARE ]
-      </button>
+      {/* Share */}
+      <ShareResultButton
+        result={
+          {
+            type: category,
+            category,
+            familyName,
+            familyIndex,
+            score,
+            metrics: metricValues,
+            streakDays,
+            playerName: playerName ?? 'Player',
+            url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://daily.arkalon.fi'
+          } satisfies ShareResult
+        }
+      />
 
       {/* Continuation */}
       <ContinuationPanel currentCategory={category} allStatuses={allStatuses} />

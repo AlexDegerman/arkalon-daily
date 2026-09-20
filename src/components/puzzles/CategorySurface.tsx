@@ -99,6 +99,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [pendingMilestone, setPendingMilestone] = useState<number | null>(null)
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false)
   const [recoveryTutorialShown, setRecoveryTutorialShown] = useState(true)
+  const [playerName, setPlayerName] = useState<string>('Player')
 
   // Resolve family definition from category
   const familyDefForCategory = useCallback((): PuzzleFamilyDefinition => {
@@ -161,6 +162,13 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
       setTrialsCompleted(res.trialsCompleted ?? [])
       setStreakDays(res.streakDays ?? 0)
+      // Load display name for share card
+      try {
+        const storedName = localStorage.getItem('arkalon_daily_display_name')
+        if (storedName) setPlayerName(storedName)
+      } catch {
+        // localStorage unavailable
+      }
       setPuzzleInfo(res.puzzleInfo!)
       setSeedData(res.seedData!)
 
@@ -512,6 +520,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           ) : (
             <ResultScreen
               category={category}
+              playerName={playerName}
               familyName={familyDef.displayName}
               familyIndex={puzzleInfo?.familyIndex ?? 0}
               score={resultScore}
