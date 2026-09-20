@@ -12,7 +12,6 @@ export async function recomputeStreak(
   playerId: string,
   category: string
 ): Promise<{ currentStreak: number; longestStreak: number }> {
-  // Fetch all results for this player+category ordered by date descending
   const rows = await client.query<{
     puzzle_date: string
     normalized_score: number
@@ -28,57 +27,39 @@ export async function recomputeStreak(
     return { currentStreak: 0, longestStreak: 0 }
   }
 
-  // Walk backward from today counting consecutive qualifying dates
+  // Build a map of date -> score for fast lookup
+  const dateScoreMap = new Map<string, number>()
+  for (const row of rows.rows) {
+    dateScoreMap.set(row.puzzle_date, row.normalized_score)
+  }
+
+  // Walk backward from today, one day at a time
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
 
   let currentStreak = 0
-  let longestStreak = 0
-  let runStreak = 0
-  let expectedDate = new Date(today)
+  const checkDate = new Date(today)
 
-  for (const row of rows.rows) {
-    const rowDate = new Date(row.puzzle_date + 'T00:00:00Z')
-    const dayDiff =
-      (expectedDate.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24)
+  while (true) {
+    const dateStr = checkDate.toISOString().slice(0, 10)
+    const score = dateScoreMap.get(dateStr)
 
-    const qualifies = row.normalized_score >= STREAK_MIN_SCORE
-
-    if (dayDiff === 0) {
-      // This is the expected date
-      if (qualifies) {
-        runStreak++
-        if (currentStreak === 0) currentStreak = runStreak
-      } else {
-        // Score too low - breaks streak
-        if (currentStreak === 0) currentStreak = 0
-        runStreak = 0
-      }
-      expectedDate.setUTCDate(expectedDate.getUTCDate() - 1)
-    } else if (dayDiff === 1) {
-      // One day gap is allowed only if today is the current date
-      // and the result is from yesterday - keep looking
-      expectedDate.setUTCDate(expectedDate.getUTCDate() - 1)
-      // Re-process this row against the new expected date
-      // by rewinding the loop index - handled by re-checking dayDiff next iter
-      continue
-    } else {
-      // Gap of more than 1 day - streak broken
+    if (score === undefined || score < STREAK_MIN_SCORE) {
+      // No qualifying result on this day - streak is broken
       break
     }
 
-    longestStreak = Math.max(longestStreak, runStreak)
+    currentStreak++
+    checkDate.setUTCDate(checkDate.getUTCDate() - 1)
   }
 
-  longestStreak = Math.max(longestStreak, runStreak)
-
-  // Also compare against existing longest_streak in DB
+  // Preserve longest streak from DB
   const existing = await client.query<{ longest_streak: number }>(
     `SELECT longest_streak FROM category_streaks WHERE player_id = $1 AND category = $2`,
     [playerId, category]
   )
   const dbLongest = existing.rows[0]?.longest_streak ?? 0
-  longestStreak = Math.max(longestStreak, dbLongest)
+  const longestStreak = Math.max(currentStreak, dbLongest)
 
   return { currentStreak, longestStreak }
 }

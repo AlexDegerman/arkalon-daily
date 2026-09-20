@@ -361,10 +361,7 @@ function genConstrainedChoice(
   // Generate 2-3 constraints and find one element satisfying all
   const reqColor = pickOne(rng, COLORS)
   const forbidShape = pickOne(rng, SHAPES)
-  const reqSize = pickOne(rng, [
-    SIZES[nextInt(rng, SIZES.length)],
-    SIZES[nextInt(rng, SIZES.length)]
-  ])
+  const reqSize = pickOne(rng, SIZES)
 
   const correctShape = SHAPES.filter((s) => s !== forbidShape)[
     nextInt(rng, SHAPES.length - 1)

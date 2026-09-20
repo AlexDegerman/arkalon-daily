@@ -102,22 +102,24 @@ export async function getPlayerProfile(
       const daysPlayed = parseInt(agg.count, 10)
       const hasEnoughData = daysPlayed >= 3
 
-      // Global percentile: fraction of players this player outscores on best day
+      // Global percentile: what fraction of players this player outscores (lower = better)
       let globalPercentile: number | null = null
       if (agg.best_score !== null) {
-        const percentileRow = await client.query<{ percentile: number }>(
-          `SELECT ROUND(
-             100.0 * RANK() OVER (ORDER BY MAX(normalized_score) DESC)
-              / COUNT(*) OVER ()
-            , 1) AS percentile
-            FROM daily_results
-            WHERE category = $1
-            GROUP BY player_id
-            HAVING player_id = $2
-            LIMIT 1`,
-          [category, playerId]
+        const percentileRow = await client.query<{ pct: string }>(
+          `WITH player_bests AS (
+              SELECT player_id, MAX(normalized_score) AS best
+              FROM daily_results
+              WHERE category = $1
+              GROUP BY player_id
+            )
+            SELECT ROUND(
+             100.0 * (SELECT COUNT(*) FROM player_bests WHERE best > $2)
+              / GREATEST((SELECT COUNT(*) FROM player_bests), 1)
+            , 1) AS pct`,
+          [category, agg.best_score]
         )
-        globalPercentile = percentileRow.rows[0]?.percentile ?? null
+        const pct = parseFloat(percentileRow.rows[0]?.pct ?? '0')
+        globalPercentile = isNaN(pct) ? null : pct
       }
 
       stats.push({

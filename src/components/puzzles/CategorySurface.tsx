@@ -274,10 +274,14 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           totalElapsedMs: result.totalElapsedMs
         },
         {
-          accuracyPercent: total > 0 ? Math.round((correct / total) * 100) : 0,
-          maxSequence: Math.max(...result.rounds.map((r) => r.sequenceLength)),
+          accuracyPercent:
+            total > 0 ? Math.round((correct / total) * 100) : 0,
+          maxSequence: Math.max(
+            ...result.rounds.map((r) => r.sequenceLength)
+          ),
           errors: result.rounds.reduce((s, r) => s + r.errors, 0),
-          completionTimeMs: result.totalElapsedMs
+          completionTimeMs: result.totalElapsedMs,
+          rounds: result.rounds
         },
         preview
       )
@@ -298,7 +302,8 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           avgReactionMs: result.avgReactionMs,
           correctTaps: result.correctTaps,
           misses: result.misses,
-          bestCombo: result.bestCombo
+          bestCombo: result.bestCombo,
+          nodes: result.nodes
         },
         Math.round(
           (result.correctTaps / Math.max(1, result.expectedNodeCount)) * 100
@@ -321,7 +326,8 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           excellentHits: result.excellentHits,
           accuracyPct: result.accuracyPct,
           avgDeviation: result.avgDeviation,
-          totalShots: result.totalShots
+          totalShots: result.totalShots,
+          shots: result.shots
         },
         result.accuracyPct
       )
@@ -345,7 +351,9 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           ),
           roundsCompleted: result.roundsCompleted,
           avgResponseMs: result.avgResponseMs,
-          totalErrors: result.totalIncorrectGuesses
+          totalErrors: result.totalIncorrectGuesses,
+          correctRounds: result.correctRounds,
+          totalRounds: result.totalRounds
         },
         Math.round((result.correctRounds / result.totalRounds) * 80)
       )
@@ -355,6 +363,25 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
   const handleDepthsComplete = useCallback(
     (result: CrystalMineResult) => {
+      // Collect found deposit positions from the seed data for the share card
+      const gridData = seedData?.familyData as Record<string, unknown> | null
+      const grid = (gridData?.grid ?? []) as Array<
+        Array<{
+          row: number
+          col: number
+          isDeposit: boolean
+          isRevealed: boolean
+        }>
+      >
+      const foundPositions: { row: number; col: number }[] = []
+      for (const row of grid) {
+        for (const cell of row) {
+          if (cell.isDeposit && cell.isRevealed) {
+            foundPositions.push({ row: cell.row, col: cell.col })
+          }
+        }
+      }
+
       handleSubmit(
         {
           family: 'crystal_mine',
@@ -368,12 +395,14 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           depositsFound: result.depositsFound,
           chargesUsed: result.chargesUsed,
           efficiencyPct: result.efficiencyPct,
-          completionTimeMs: result.totalElapsedMs
+          completionTimeMs: result.totalElapsedMs,
+          gridSize: (gridData?.gridSize as number) ?? 5,
+          foundPositions
         },
         Math.round((result.depositsFound / result.totalDeposits) * 80)
       )
     },
-    [handleSubmit]
+    [handleSubmit, seedData]
   )
 
   const cat = CATEGORIES[category]

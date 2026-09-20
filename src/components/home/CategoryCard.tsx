@@ -129,10 +129,7 @@ export function CategoryCard({
       {isPlayable && (
         <div className="mt-1">
           <span
-            className={[
-              'inline-block rounded px-3 py-1 text-xs font-semibold tracking-wider',
-              `bg-[${cat.accentColor}]/10 text-[${cat.accentColor}] border border-[${cat.accentColor}]/40`
-            ].join(' ')}
+            className="inline-block rounded border px-3 py-1 text-xs font-semibold tracking-wider"
             style={{
               backgroundColor: `${cat.accentColor}18`,
               color: cat.accentColor,
