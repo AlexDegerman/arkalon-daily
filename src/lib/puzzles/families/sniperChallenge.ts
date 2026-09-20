@@ -33,12 +33,14 @@ function generate(seed: string): PuzzleSeedData {
   const rng = seedToRng(seed)
   const base = STRIKE_BASE_CONFIGS[nextInt(rng, STRIKE_BASE_CONFIGS.length)]
 
-  // Continuous variation on speed and window
-  const speedVariance = nextFloat(rng, 0.9, 1.1)
+  // Continuous variation on speed (+-8%) and window (+-10%)
+  // Tighter speed variance avoids the hardest base configs becoming
+  // effectively unplayable on mobile at 2.8x+ speed
+  const speedVariance = nextFloat(rng, 0.92, 1.08)
   const windowVariance = nextFloat(rng, 0.9, 1.1)
   const movementSpeed = Math.round(base.movementSpeed * speedVariance * 10) / 10
   const targetWindowPx = Math.max(
-    10,
+    12,
     Math.round(base.targetWindowPx * windowVariance)
   )
 
@@ -93,8 +95,23 @@ registerValidator('sniper_challenge', (data) => {
   if (fam.shotCount < 5) {
     return { valid: false, reason: 'Too few shots' }
   }
-  if (fam.targetWindowPx < 10) {
-    return { valid: false, reason: 'Target window too narrow' }
+  if (fam.targetWindowPx < 12) {
+    return {
+      valid: false,
+      reason: 'Target window too narrow for reliable mobile play'
+    }
+  }
+  // Reject deceptive + very high speed (2.5x+) on narrow windows (<25px):
+  // the fake-out at high speed with a small target creates a near-zero skill floor
+  if (
+    fam.motionFunction === 'deceptive' &&
+    fam.movementSpeed >= 2.5 &&
+    fam.targetWindowPx < 25
+  ) {
+    return {
+      valid: false,
+      reason: 'Deceptive motion at high speed with narrow window is not fair'
+    }
   }
   return { valid: true }
 })

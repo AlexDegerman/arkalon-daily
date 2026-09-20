@@ -91,7 +91,7 @@ export const SURGE_BASE_CONFIGS: SurgeBaseConfig[] = [
     targetBehavior: 'fading',
     timingProfile: 'endurance',
     spatialLayout: 'circular_perimeter',
-    hasDecoyTargets: true
+    hasDecoyTargets: false
   },
   {
     spawnPattern: 'lane_switch',

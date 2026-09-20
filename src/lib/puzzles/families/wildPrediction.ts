@@ -67,6 +67,17 @@ registerValidator('wild_prediction', (data) => {
   if (fam.rounds.length < 3) {
     return { valid: false, reason: 'Too few rounds' }
   }
+  // Reject if all rounds use the same generator (monotone experience)
+  const generators = new Set(fam.rounds.map((r) => r.generator))
+  const allSameGenerator = generators.size === 1 && fam.rounds.length >= 4
+  // Allow short single-generator sessions, but reject long trivial sequences
+  if (
+    allSameGenerator &&
+    fam.rounds.every((r) => r.generator === 'alternating') &&
+    fam.rounds.length >= 5
+  ) {
+    return { valid: false, reason: 'Too many alternating-only rounds' }
+  }
   for (const round of fam.rounds) {
     if (round.choices.length < 2) {
       return { valid: false, reason: 'Round has fewer than 2 choices' }

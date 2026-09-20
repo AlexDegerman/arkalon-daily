@@ -366,5 +366,18 @@ registerValidator('surge_frenzy', (data) => {
   if (fam.expectedNodeCount < 3) {
     return { valid: false, reason: 'Too few non-decoy nodes' }
   }
+  // Reject if decoy ratio exceeds 40% (unfair on mobile where misclicks are common)
+  const decoyCount = fam.nodes.filter((n) => n.isDecoy).length
+  if (fam.nodes.length > 0 && decoyCount / fam.nodes.length > 0.4) {
+    return { valid: false, reason: 'Decoy ratio too high for fair mobile play' }
+  }
+  // Reject the hardest combination: long pressure timing with split targets
+  // to avoid excessive input load on weaker mobile devices
+  if (fam.timingProfile === 'pressure' && fam.targetBehavior === 'splitting') {
+    return {
+      valid: false,
+      reason: 'Pressure timing with splitting behavior is too demanding'
+    }
+  }
   return { valid: true }
 })

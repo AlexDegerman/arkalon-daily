@@ -334,12 +334,7 @@ export const CrystalMineFamily: PuzzleFamilyDefinition = {
 
 registerValidator('crystal_mine', (data) => {
   const fam = data.familyData as unknown as CrystalMineData
-  const flatCells = fam.grid.flat().map((c) => ({
-    isDeposit: c.isDeposit,
-    isClue: c.isClue,
-    clueValue: c.clueValue,
-    isRevealed: c.isRevealed
-  }))
+  const flatCells = fam.grid.flat()
 
   const result = validateDepthsSolvability(
     fam.grid.map((row) =>
@@ -354,6 +349,40 @@ registerValidator('crystal_mine', (data) => {
   // Reject if no clue tiles placed
   if (!flatCells.some((c) => c.isClue)) {
     return { valid: false, reason: 'No clue tiles placed' }
+  }
+
+  // Reject if hot_cold clues give no useful coverage:
+  // every hot_cold clue must have at least one deposit within distance 3
+  if (fam.clueType === 'hot_cold') {
+    const deposits = flatCells.filter((c) => c.isDeposit)
+    const clueTiles = flatCells.filter((c) => c.isClue)
+    const anyNearDeposit = clueTiles.some((clue) =>
+      deposits.some(
+        (dep) =>
+          Math.abs(clue.row - dep.row) + Math.abs(clue.col - dep.col) <= 3
+      )
+    )
+    if (!anyNearDeposit) {
+      return {
+        valid: false,
+        reason:
+          'Hot/cold clues provide no WARM or HOT signals - grid is effectively unsolvable'
+      }
+    }
+  }
+
+  // Reject all-corners deposit pattern on a 5x5 grid with hot_cold clues:
+  // deposits are too spread for hot_cold to give useful signal
+  if (
+    fam.depositPattern === 'corners' &&
+    fam.gridSize === 5 &&
+    fam.clueType === 'hot_cold'
+  ) {
+    return {
+      valid: false,
+      reason:
+        'Corners pattern on 5x5 with hot_cold clues produces degenerate layout'
+    }
   }
 
   return { valid: true }

@@ -38,8 +38,9 @@ function generate(seed: string): PuzzleSeedData {
     RECALL_BASE_CONFIGS[nextInt(rng, RECALL_BASE_CONFIGS.length)]
 
   // Continuous-parameter variation on top of the base config
-  // Display duration varies +-15% from the base value
-  const durationVariance = nextFloat(rng, 0.85, 1.15)
+  // Display duration varies +-12% from the base value (tighter range
+  // avoids collapsing short configs below the 1000ms playability floor)
+  const durationVariance = nextFloat(rng, 0.88, 1.12)
   const displayDurationMs = Math.round(
     baseConfig.displayDurationMs * durationVariance
   )
@@ -140,10 +141,16 @@ registerValidator('arkalon_vision', (data) => {
     }
   }
 
-  // Reject if all rounds have sequence length 1 (trivially easy)
-  const allTrivial = fam.rounds.every((r) => r.sequence.length <= 1)
+  // Reject if all rounds have sequence length <= 2 (trivially easy)
+  const allTrivial = fam.rounds.every((r) => r.sequence.length <= 2);
   if (allTrivial) {
-    return { valid: false, reason: 'All rounds are trivially short' }
+    return { valid: false, reason: 'All rounds are trivially short' };
+  }
+
+  // Reject if display duration is so short all rounds are below 1200ms
+  const allTooFast = fam.rounds.every((r) => r.displayDurationMs < 1200);
+  if (allTooFast) {
+    return { valid: false, reason: 'All rounds have display duration below 1200ms' };
   }
 
   return { valid: true }
