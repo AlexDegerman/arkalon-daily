@@ -60,12 +60,8 @@ export function useBGM() {
     const track = BGM_TRACK_MAP[context]
     const prev = currentAudioRef.current
 
-    // Already playing this track
-    if (
-      prev &&
-      !prev.paused &&
-      prev.src.endsWith(track.replace('/music/', ''))
-    ) {
+    // Already playing this track - compare by track path suffix
+    if (prev && !prev.paused && prev.src.includes(track)) {
       return
     }
 
