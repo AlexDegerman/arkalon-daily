@@ -4,6 +4,7 @@ import { useEffect, useCallback } from 'react'
 import { useUiStore } from '@/app/stores/uiStore'
 import { useSound } from '@/hooks/useSound'
 import { speakArkalon } from '@/lib/arkalonTTS'
+import { getMilestoneTTSLine } from '@/lib/ttsLines'
 import type { PuzzleCategory } from '@/types/puzzle'
 import { CATEGORIES } from '@/constants/categories'
 import type { SoundKey } from '@/hooks/useSound'
@@ -28,13 +29,6 @@ const MILESTONE_SOUND: Record<number, SoundKey> = {
   30: 'streak-30',
   100: 'streak-100',
   365: 'streak-365'
-}
-
-const MILESTONE_TTS: Record<number, string> = {
-  7: 'Seven cycles... unbroken.',
-  30: 'Thirty cycles... your persistence... is noted.',
-  100: 'One hundred cycles... remarkable... endurance.',
-  365: 'A full revolution... around the star. Extraordinary.'
 }
 
 const MILESTONE_LABEL: Record<number, string> = {
@@ -80,7 +74,7 @@ export function StreakMilestoneOverlay({
     if (soundKey) play(soundKey)
 
     if (arkalonTTSEnabled) {
-      const line = MILESTONE_TTS[milestone]
+      const line = getMilestoneTTSLine(milestone)
       if (line) {
         setTimeout(() => speakArkalon(line, arkalonVolume), 600)
       }

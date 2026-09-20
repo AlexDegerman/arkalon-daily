@@ -1,4 +1,5 @@
 import { CategoryGrid } from '@/components/home/CategoryGrid'
+import { HomepageClient } from '@/components/home/HomepageClient'
 import type { CategoryStatus } from '@/types/puzzle'
 
 // Static placeholder statuses - replaced with live data in Commit 3.5
@@ -34,14 +35,17 @@ const PLACEHOLDER_STATUSES: CategoryStatus[] = [
 
 export default function HomePage() {
   return (
-    <main className="mx-auto max-w-180 px-4 py-6 pb-24">
-      <h1 className="mb-1 text-center text-2xl font-semibold tracking-widest text-text-primary">
-        ARKALON DAILY
-      </h1>
-      <p className="mb-6 text-center text-sm text-text-muted">
-        Today&apos;s Puzzles
-      </p>
-      <CategoryGrid statuses={PLACEHOLDER_STATUSES} />
-    </main>
+    <>
+      <HomepageClient />
+      <main className="mx-auto max-w-180 px-4 py-6 pb-24">
+        <h1 className="mb-1 text-center text-2xl font-semibold tracking-widest text-text-primary">
+          ARKALON DAILY
+        </h1>
+        <p className="mb-6 text-center text-sm text-text-muted">
+          Today&apos;s Puzzles
+        </p>
+        <CategoryGrid statuses={PLACEHOLDER_STATUSES} />
+      </main>
+    </>
   )
 }

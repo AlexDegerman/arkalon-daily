@@ -18,6 +18,7 @@ import { submitResult } from '@/app/actions/submitResult'
 import { usePuzzleStore } from '@/app/stores/puzzleStore'
 import { useUiStore } from '@/app/stores/uiStore'
 import { speakArkalon } from '@/lib/arkalonTTS'
+import { getResultTTSLine, TTS_LINES } from '@/lib/ttsLines'
 import { useSound } from '@/hooks/useSound'
 import { getScoreTierClass } from '@/lib/format'
 import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
@@ -185,7 +186,10 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const handleTrialBegin = useCallback(() => {
     setIsTrial(true)
     setPhase('playing')
-  }, [])
+    if (arkalonTTSEnabled) {
+      speakArkalon(TTS_LINES.trialEntry, arkalonVolume)
+    }
+  }, [arkalonTTSEnabled, arkalonVolume])
 
   const handleTrialSkip = useCallback(() => {
     setIsTrial(false)
@@ -241,18 +245,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       else play('result-common')
 
       if (arkalonTTSEnabled) {
-        if (score >= 96)
-          speakArkalon('Exceptional... performance... recorded.', arkalonVolume)
-        else if (score >= 90)
-          speakArkalon('Precision... acknowledged.', arkalonVolume)
-        else if (score >= 80)
-          speakArkalon('Competent... execution... noted.', arkalonVolume)
-        else if (score >= 70)
-          speakArkalon('Adequate... but room... for refinement.', arkalonVolume)
-        else if (score >= 50)
-          speakArkalon('The data... has been... catalogued.', arkalonVolume)
-        else
-          speakArkalon('The challenge... proved... formidable.', arkalonVolume)
+        speakArkalon(getResultTTSLine(score), arkalonVolume)
       }
 
       setResultScore(score)
