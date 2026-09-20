@@ -31,6 +31,15 @@ body {
   box-sizing: border-box;
 }
 
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.82; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
     Shared global styles migrated from RPS League
    ═══════════════════════════════════════════════════════════════════ */
