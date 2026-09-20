@@ -53,6 +53,12 @@ export function ProfileClient() {
 
   const handleTutorialDismiss = useCallback(async () => {
     setShowTutorial(false)
+    // Set localStorage flag so CategorySurface knows to suppress recovery prompt
+    try {
+      localStorage.setItem('arkalon_daily_recovery_tutorial_shown', 'true')
+    } catch {
+      // localStorage unavailable
+    }
     const playerId = getPlayerId()
     if (playerId) {
       await markRecoveryTutorialShown(playerId)

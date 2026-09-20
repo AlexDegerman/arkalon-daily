@@ -6,6 +6,7 @@ import { GameHeader } from '@/components/layout/GameHeader'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { TrialExplainer } from '@/components/trial/TrialExplainer'
 import { ResultScreen } from '@/components/result/ResultScreen'
+import { StreakMilestoneOverlay } from '@/components/overlays/StreakMilestoneOverlay'
 import { ArkalonVision } from './ArkalonVision'
 import { SurgeFrenzy } from './SurgeFrenzy'
 import { SniperChallenge } from './SniperChallenge'
@@ -95,6 +96,9 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [rawMetrics, setRawMetrics] = useState<
     Parameters<typeof submitResult>[0]['familyMetrics'] | null
   >(null)
+  const [pendingMilestone, setPendingMilestone] = useState<number | null>(null)
+  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false)
+  const [recoveryTutorialShown, setRecoveryTutorialShown] = useState(true)
 
   // Resolve family definition from category
   const familyDefForCategory = useCallback((): PuzzleFamilyDefinition => {
@@ -132,6 +136,15 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       // No player ID yet - redirect home so WelcomeModal can fire
       router.replace('/')
       return
+    }
+
+    try {
+      const tutorialShown = localStorage.getItem(
+        'arkalon_daily_recovery_tutorial_shown'
+      )
+      setRecoveryTutorialShown(tutorialShown === 'true')
+    } catch {
+      setRecoveryTutorialShown(true)
     }
 
     getDailyChallenge(playerId, category).then((res) => {
@@ -238,6 +251,16 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       setResultStatus(status)
       setStreakDays(res.currentStreak ?? 0)
       setResultMetrics(displayMetrics)
+
+      // Surface milestone overlay if a new milestone was reached
+      if (res.newMilestone) {
+        setPendingMilestone(res.newMilestone)
+        // Show recovery prompt on first milestone if tutorial not yet seen
+        if (!recoveryTutorialShown) {
+          setShowRecoveryPrompt(true)
+        }
+      }
+
       setPhase('result')
     },
     [puzzleInfo, isTrial, category, play, arkalonTTSEnabled, arkalonVolume]
@@ -447,7 +470,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         <main className="flex-1 overflow-y-auto">
           {isTrial && resultMetrics.isTrial ? (
             // Trial result screen
-            <div className="mx-auto flex max-w-[720px] flex-col items-center gap-6 px-4 py-8">
+            <div className="mx-auto flex max-w-180 flex-col items-center gap-6 px-4 py-8">
               <p className="text-xs uppercase tracking-widest text-[#F59E0B]">
                 Trial Complete
               </p>
@@ -502,6 +525,15 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           )}
         </main>
         <BottomNav />
+        {pendingMilestone !== null && phase === 'result' && (
+          <StreakMilestoneOverlay
+            category={category}
+            milestone={pendingMilestone}
+            streakDays={streakDays}
+            onDismiss={() => setPendingMilestone(null)}
+            showRecoveryPrompt={showRecoveryPrompt}
+          />
+        )}
       </div>
     )
   }
