@@ -185,7 +185,7 @@ export function ResultScreen({
             metrics: metricValues,
             streakDays,
             playerName: playerName ?? 'Player',
-            url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://daily.arkalon.fi'
+            url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://daily.rpsleague.fi'
           } satisfies ShareResult
         }
       />

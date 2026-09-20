@@ -1,27 +1,15 @@
-import type { PuzzleCategory } from '@/types/puzzle';
-
-interface RecommendationEntry {
-  appName: string;
-  tagline: string;
-  url: string;
-}
-
-// Static skill-matched recommendations - populated fully in Commit 7.4
-const PLACEHOLDER_RECOMMENDATIONS: Partial<Record<PuzzleCategory, RecommendationEntry>> = {
-  recall: {
-    appName: 'ARKALON RAIDS',
-    tagline: 'Tactical positioning and pattern reading.',
-    url: 'https://arkalon.fi',
-  },
-};
+import type { PuzzleCategory } from '@/types/puzzle'
+import { NETWORK_RECOMMENDATIONS } from '@/lib/networkRecommendations'
 
 interface NetworkRecommendationProps {
-  category: PuzzleCategory;
+  category: PuzzleCategory
 }
 
-export function NetworkRecommendation({ category }: NetworkRecommendationProps) {
-  const rec = PLACEHOLDER_RECOMMENDATIONS[category];
-  if (!rec) return null;
+export function NetworkRecommendation({
+  category
+}: NetworkRecommendationProps) {
+  const rec = NETWORK_RECOMMENDATIONS[category]
+  if (!rec) return null
 
   return (
     <div className="w-full border-t border-border-subtle pt-6">
@@ -30,9 +18,11 @@ export function NetworkRecommendation({ category }: NetworkRecommendationProps) 
       </p>
       <div className="rounded-xl border border-border-subtle bg-surface-panel p-4">
         <p className="mb-1 text-xs text-text-muted">
-          Strong {category} performance. You may also enjoy:
+          {rec.skillMatch}. You may also enjoy:
         </p>
-        <p className="mb-1 text-sm font-semibold text-text-primary">{rec.appName}</p>
+        <p className="mb-1 text-sm font-semibold text-text-primary">
+          {rec.appName}
+        </p>
         <p className="mb-3 text-xs text-text-muted">{rec.tagline}</p>
         <a
           href={rec.url}
@@ -44,5 +34,5 @@ export function NetworkRecommendation({ category }: NetworkRecommendationProps) 
         </a>
       </div>
     </div>
-  );
+  )
 }

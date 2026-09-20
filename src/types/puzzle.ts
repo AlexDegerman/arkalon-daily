@@ -1,4 +1,4 @@
-export type PuzzleCategory = 'recall' | 'surge' | 'cipher' | 'strike' | 'depths'
+export type PuzzleCategory = 'recall' | 'surge' | 'strike' 
 
 export type PuzzleStatus = 'available' | 'trial' | 'solved' | 'failed'
 
