@@ -2,8 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { GameHeader } from '@/components/layout/GameHeader'
-import { BottomNav } from '@/components/layout/BottomNav'
 import { ProfileView } from './ProfileView'
 import { RecoveryTutorialOverlay } from './RecoveryTutorialOverlay'
 import { RecoveryCodeEntry } from './RecoveryCodeEntry'
@@ -89,40 +87,30 @@ export function ProfileClient() {
 
   if (phase === 'loading') {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <GameHeader />
-        <main className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading profile...</p>
-        </main>
-        <BottomNav />
-      </div>
+      <main className="flex flex-1 items-center justify-center py-12">
+        <p className="text-sm text-text-muted">Loading profile...</p>
+      </main>
     )
   }
 
   if (phase === 'no-player' || phase === 'error') {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <GameHeader />
-        <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4">
-          <p className="text-sm text-text-muted">
-            {phase === 'no-player'
-              ? 'No profile found. Play a puzzle to create one.'
-              : 'Could not load your profile.'}
-          </p>
-          <RecoveryCodeEntry onRestore={handleRestore} />
-        </main>
-        <BottomNav />
-      </div>
+      <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-12">
+        <p className="text-sm text-text-muted">
+          {phase === 'no-player'
+            ? 'No profile found. Play a puzzle to create one.'
+            : 'Could not load your profile.'}
+        </p>
+        <RecoveryCodeEntry onRestore={handleRestore} />
+      </main>
     )
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <GameHeader />
+    <>
       <main className="flex-1 overflow-y-auto">
         <h1 className="sr-only">Player Profile</h1>
         <ProfileView profile={profile!} stats={stats} />
-        {/* Recovery code restore - below the main profile content */}
         <div className="mx-auto max-w-180 px-4 pb-24">
           <RecoveryCodeEntry onRestore={handleRestore} />
         </div>
@@ -133,7 +121,6 @@ export function ProfileClient() {
           onDismiss={handleTutorialDismiss}
         />
       )}
-      <BottomNav />
-    </div>
+    </>
   )
 }

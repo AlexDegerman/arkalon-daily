@@ -9,5 +9,6 @@ export function useActiveView(): ActiveView {
   if (pathname === '/') return 'home'
   if (pathname === '/leaderboard') return 'leaderboard'
   if (pathname === '/profile') return 'profile'
+  if (pathname.startsWith('/review')) return 'home'
   return 'game'
 }
