@@ -19,6 +19,8 @@
 
 html,
 body {
+  overflow-x: hidden;
+  max-width: 100vw;
   background-color: #080b10;
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(0, 255, 102, 0.07) 0%, transparent 60%),
@@ -56,7 +58,7 @@ body {
 }
 
 /* ===================================================================
-   RPS League Galaxy Tier Shaders (Clean Text Titles)
+    Puzzle Titles
    =================================================================== */
 
 /* Recall: Novemtrigintillion (g-ntg) */
@@ -80,7 +82,7 @@ body {
   100% { background-position: 200% 50%; }
 }
 
-/* Surge: Octoquadragintillion (g-ocqg) */
+/* Surge: Octoquadragintillion  */
 .title-surge {
   font-weight: 900;
   display: inline-block;
@@ -133,7 +135,7 @@ body {
   100% { background-position: 200% 0, 0 0; }
 }
 
-/* Cipher: Duoquinquagintillion (g-dqgs without pseudo-elements) */
+/* Cipher: Duoquinquagintillion */
 .title-cipher {
   font-weight: 900;
   display: inline-block;
@@ -158,7 +160,7 @@ body {
   to { background-position-x: 200%; }
 }
 
-/* Strike: Octovigintillion / Hellfire (g-ovg) */
+/* Strike: Octovigintillion / Hellfire */
 .title-strike {
   font-weight: 900;
   display: inline-block;
@@ -190,7 +192,7 @@ body {
   50% { filter: contrast(1.25) saturate(1.2) drop-shadow(0 0 6px #ff6a00) drop-shadow(0 0 14px #ff3c00); }
 }
 
-/* Depths: Novemvigintillion (g-nvg without pseudo-elements) */
+/* Depths: Novemvigintillion */
 .title-depths {
   font-weight: 900;
   display: inline-block;
@@ -212,7 +214,7 @@ body {
 }
 
 /* ===================================================================
-   Galaxy Tier Animated Borders (Frames & Buttons)
+    Galaxy Tier Animated Borders (Frames & Buttons)
    =================================================================== */
 
 /* Recall (Green - g-ntg border) */
@@ -271,41 +273,168 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-    Shared global styles migrated from RPS League
+    Score Tier Shaders (12-Tier Dark Theme Hierarchy)
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Tier 1 (0-14): Slate Steel (Muted low-score tier, high dark-theme contrast) */
 .g-vg {
+  font-weight: 800;
+  display: inline-block;
+  color: #94a3b8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  filter: drop-shadow(0 0 2px rgba(148, 163, 184, 0.25));
+}
+
+/* Tier 2 (15-29): Vessel Lock (Steel blue with amber sweep - streak preservation) */
+@keyframes qnqg-amber-sweep {
+  0%   { background-position: -200% 0, 0 0, 0 0; }
+  100% { background-position: 300% 0, 0 0, 0 0; }
+}
+.g-qnqg {
+  transform: translateZ(0);
+  display: inline-block;
+  position: relative;
+  padding: 0 0.12em;
+  isolation: isolate;
+
+  background: 
+    linear-gradient(90deg, rgba(255, 191, 0, 0) 0%, #ffffff 40%, #ffb300 50%, #ffb300 60%, rgba(255, 191, 0, 0) 100%) no-repeat,
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0px, rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 3px),
+    linear-gradient(180deg, #b0c4de 0%, #4682b4 40%, #1c3d5a 100%);
+  background-size: 150px 100%, 100% 100%, 100% 100%;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+
+  -webkit-text-stroke: 0.5px #1c3d5a;
+  text-shadow: 0 0 3px rgba(70, 130, 180, 0.75), 0 0 10px rgba(70, 130, 180, 0.3);
+  animation: qnqg-amber-sweep 2s linear infinite;
+}
+
+/* Tier 3 (30-39): Novemtrigintillion (Fluid emerald green text flow) */
+@keyframes ntg-text-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.g-ntg {
   font-weight: 900;
   display: inline-block;
-  filter: drop-shadow(0 0 14px currentColor) drop-shadow(0 0 5px currentColor) contrast(1.5);
-  animation: holy-bloom 4s linear infinite;
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(90deg, #14532d 0%, #16a34a 18%, #4ade80 38%, #bbf7d0 52%, #4ade80 66%, #15803d 82%, #14532d 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.4px rgba(134, 239, 172, 0.75);
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.8)) drop-shadow(0 0 18px rgba(16, 185, 129, 0.5));
+  animation: ntg-text-flow 3.5s linear infinite;
 }
 
-@keyframes holy-bloom {
+/* Tier 4 (40-49): Wave Sapphire (Flowing cyan and sapphire ocean wave) */
+@keyframes sp-wave {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.g-sp {
+  color: transparent;
+  background: linear-gradient(135deg, #22d3ee, #2563eb, #0ea5e9, #1d4ed8, #22d3ee);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  font-weight: 900;
+  display: inline-block;
+  animation: sp-wave 3s ease-in-out infinite;
+  filter: drop-shadow(0 -2px 8px rgba(34, 211, 238, 0.7)) drop-shadow(0 2px 4px rgba(37, 99, 235, 0.4));
+}
+
+/* Tier 5 (50-59): Electric Sky (White-hot cyan electric text with neon aura) */
+@keyframes dc-text-electric {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.g-dc {
+  color: transparent;
+  background: linear-gradient(90deg, #ffffff, #7dd3fc, #0ea5e9, #ffffff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  font-weight: 900;
+  display: inline-block;
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 7px rgba(0, 210, 255, 0.95));
+  animation: dc-text-electric 2s ease-in-out infinite;
+}
+
+/* Tier 6 (60-69): Abyssal Trench (Deep oceanic teal with cyan border) */
+@keyframes abyssal-text-flow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.g-nvg {
+  font-weight: 900;
+  display: inline-block;
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  background: linear-gradient(270deg, #0b132b 0%, #1c2541 35%, #5bc0be 50%, #1c2541 65%, #0b132b 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.4px rgba(34, 211, 238, 0.95);
+  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.75)) drop-shadow(0 2px 4px rgba(11, 19, 43, 0.9));
+  animation: abyssal-text-flow 6s linear infinite;
+}
+
+/* Tier 7 (70-79): Dune Mirage (Amber and gold desert sand sweep) */
+@keyframes dune-sand-sweep-rtl {
+  0%   { background-position-x: 0%; }
+  100% { background-position-x: 200%; }
+}
+@keyframes dune-mirage-distortion {
   0%, 100% {
-    color: #10b981;
-    transform: scale(1);
-  }
-  25% {
-    color: #ef4444;
-    transform: scale(1.04);
+    transform: scale3d(1, 1, 1) skewX(-11deg);
   }
   50% {
-    color: #3b82f6;
-    transform: scale(1.06);
-  }
-  75% {
-    color: #c084fc;
-    transform: scale(1.04);
+    transform: scale3d(1.04, 1, 1) skewX(-13deg);
   }
 }
-/* PHANTASM CORE  */
+.g-qntr {
+  font-weight: 900;
+  display: inline-block;
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(
+    90deg, 
+    #78350f 0%, 
+    #b45309 15%, 
+    #f59e0b 30%, 
+    #fef3c7 45%, 
+    #fbbf24 55%, 
+    #d97706 70%, 
+    #92400e 85%, 
+    #78350f 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.5px rgba(254, 243, 199, 0.8);
+  filter: drop-shadow(0 1px 2px rgba(180, 83, 9, 0.4)) drop-shadow(0 0 4px rgba(251, 191, 36, 0.45));
+  animation: 
+    dune-sand-sweep-rtl 3.5s linear infinite,
+    dune-mirage-distortion 2s ease-in-out infinite;
+}
 
+/* Tier 8 (80-84): Phantasm Core (Deep royal purple infused with flowing gold veins) */
 @keyframes phantasm-flow-active {
   0%   { background-position: 0% 50%; }
   100% { background-position: 300% 50%; }
 }
-
 .g-str {
   font-weight: 900;
   display: inline-block;
@@ -333,6 +462,7 @@ body {
   animation: phantasm-flow-active 8s linear infinite;
 }
 
+/* Tier 9 (85-89): Moonlight (Luminous silver-blue lunar core with moon-shine aura) */
 @keyframes moon-shine {
   0%   { background-position: 0% center;   filter: drop-shadow(0 0 2px rgba(0, 50, 150, 0.5)) drop-shadow(0 0 5px #99ccff); }
   50%  { background-position: 100% center;  filter: drop-shadow(0 0 2px rgba(0, 50, 150, 0.8)) drop-shadow(0 0 15px #cceeff); }
@@ -350,80 +480,36 @@ body {
   animation: moon-shine 4s linear infinite;
 }
 
-@keyframes lunar-core {
-  0%, 100% {
-    background-position: 20% 30%, 0% 50%;
-  }
-  50% {
-    background-position: 80% 70%, 100% 50%;
-  }
+/* Tier 10 (90-95): Duoquinquagintillion (Faceted crystalline violet & magenta prism) */
+@keyframes dqg-sweep {
+  to { background-position-x: 200%; }
 }
-.g-dvg {
-  font-weight: 900;
+.g-dqgs {
+  transform: translateZ(0);
   display: inline-block;
   position: relative;
-  letter-spacing: 0.03em;
-  background:
-    radial-gradient(circle at 30% 25%, #ffffff 0%, #bcd7ff 18%, #4a78c2 38%, #0b1630 70%, #05070d 100%),
-    linear-gradient(120deg, #0a1430, #ffffff, #1d3f7a, #0a1430);
-  background-size: 180% 180%, 300% 100%;
-  background-blend-mode: screen;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 1px rgba(210, 230, 255, 0.75);
-  filter:
-    drop-shadow(0 0 6px rgba(120, 170, 255, 0.45))
-    drop-shadow(0 0 18px rgba(90, 140, 255, 0.30))
-    drop-shadow(0 0 45px rgba(255, 255, 255, 0.12));
-  animation: lunar-core 6s ease-in-out infinite;
-}
-/* DUNE ILLUSION   */
-@keyframes dune-sand-sweep-rtl {
-  0%   { background-position-x: 0%; }
-  100% { background-position-x: 200%; }
-}
+  padding: 0 0.15em;
 
-@keyframes dune-mirage-distortion {
-  0%, 100% {
-    transform: scale3d(1, 1, 1) skewX(-11deg);
-  }
-  50% {
-    transform: scale3d(1.04, 1, 1) skewX(-13deg);
-  }
-}
-
-.g-qntr {
-  font-weight: 900;
-  display: inline-block;
-  position: relative;
-  isolation: isolate;
-  z-index: 1;
-  letter-spacing: -0.04em;
-  background: linear-gradient(
-    90deg, 
-    #78350f 0%, 
-    #b45309 15%, 
-    #f59e0b 30%, 
-    #fef3c7 45%, 
-    #fbbf24 55%, 
-    #d97706 70%, 
-    #92400e 85%, 
-    #78350f 100%
-  );
+  background: 
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0px, rgba(255, 255, 255, 0.12) 2px, transparent 2px, transparent 5px),
+    linear-gradient(90deg, #4c1d95 0%, #a855f7 25%, #fffbeb 50%, #ec4899 75%, #701a75 100%);
   background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0.5px rgba(254, 243, 199, 0.8);
-  filter: drop-shadow(0 1px 2px rgba(180, 83, 9, 0.4)) drop-shadow(0 0 4px rgba(251, 191, 36, 0.45)) drop-shadow(-6px 2px 4px rgba(180, 83, 9, 0.35)) drop-shadow(-18px 4px 10px rgba(146, 64, 14, 0.22));
-  animation: 
-    dune-sand-sweep-rtl 3.5s linear infinite,
-    dune-mirage-distortion 2s ease-in-out infinite;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+
+  -webkit-text-stroke: 0.5px #4a044e;
+  filter:
+    drop-shadow(0 0.5px 0px #4a044e)
+    drop-shadow(0 -0.5px 0px #4a044e)
+    drop-shadow(0 0 3px rgba(236, 72, 153, 0.65))
+    drop-shadow(0 0 10px rgba(168, 85, 247, 0.3));
+
+  animation: dqg-sweep 6s linear infinite;
 }
 
-
-/* SOLAR PROMINENCE  */
+/* Tier 11 (96-99): Solar Prominence (Amber-gold with white-hot solar flare core) */
 @keyframes solar-text-active-shimmer {
   0%, 100% {
     background-position: 0% 50%;
@@ -432,7 +518,6 @@ body {
     background-position: 100% 50%;
   }
 }
-
 .g-ttr {
   font-weight: 900;
   display: inline-block;
@@ -448,108 +533,11 @@ body {
   animation: solar-text-active-shimmer 3s ease-in-out infinite;
 }
 
-/* ABYSSAL TRENCH */
-@keyframes abyssal-text-flow {
-  0%   { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-
-.g-nvg {
-  font-weight: 900;
-  display: inline-block;
-  position: relative;
-  isolation: isolate;
-  z-index: 1;
-  background: linear-gradient(270deg, #0b132b 0%, #1c2541 35%, #5bc0be 50%, #1c2541 65%, #0b132b 100%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0.4px rgba(34, 211, 238, 0.95);
-  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.75)) drop-shadow(0 2px 4px rgba(11, 19, 43, 0.9));
-  animation: abyssal-text-flow 6s linear infinite;
-}
-
-/* TRESQUADRAGINTILLION */
-
-/* Metallic chrome sweep flashing between amethyst violet and acid green */
-@keyframes tqg-chromatic-sweep {
-  0%   { background-position-x: 0%; }
-  100% { background-position-x: 200%; }
-}
-
-/* Unstable structural skew of the text, matching the swarm's surge */
-@keyframes tqg-kinetic-vibe {
-  0%, 100% {
-    transform: scale(1) skewX(0deg);
-    filter: 
-      drop-shadow(0 2px 4px rgba(12, 2, 26, 0.85)) 
-      drop-shadow(0 0 5px rgba(139, 92, 246, 0.45));
-  }
-  15% {
-    transform: scale(1.03) skewX(-1.5deg);
-    filter: 
-      drop-shadow(0 2px 4px rgba(12, 2, 26, 0.85)) 
-      drop-shadow(0 0 8px rgba(163, 230, 53, 0.6));
-  }
-  30% {
-    transform: scale(0.98) skewX(1deg);
-  }
-  45% {
-    transform: scale(1.01) skewX(0deg);
-  }
-}
-
-.g-tqg {
-  font-weight: 900;
-  display: inline-block;
-  position: relative;
-  isolation: isolate;
-  transform-origin: center;
-  letter-spacing: -0.01em;
-  
-  /* Amethyst purple, obsidian basalt, sterling silver, and acid green */
-  background: linear-gradient(
-    90deg, 
-    #0f051d 0%, 
-    #8b5cf6 20%, 
-    #a3e635 45%, 
-    #ffffff 55%, 
-    #8b5cf6 75%, 
-    #0f051d 100%
-  );
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 1px #0f051d; 
-  paint-order: stroke fill;
-  will-change: transform;
-  animation: 
-    tqg-chromatic-sweep 1.6s linear infinite, 
-    tqg-kinetic-vibe 2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-}
-
-/* NOVEMTRIGINTILLION */
-@keyframes ntg-text-flow { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
-
-.g-ntg {
-  font-weight: 900; display: inline-block; position: relative; isolation: isolate;
-  background: linear-gradient(90deg, #14532d 0%, #16a34a 18%, #4ade80 38%, #bbf7d0 52%, #4ade80 66%, #15803d 82%, #14532d 100%);
-  background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; -webkit-text-stroke: .4px rgba(134,239,172,.75);
-  filter: drop-shadow(0 0 6px rgba(34,197,94,.8)) drop-shadow(0 0 18px rgba(16,185,129,.5));
-  animation: ntg-text-flow 3.5s linear infinite;
-}
-
-/*  ROYAL TREASURE PILE */
-/* Overall Effect: Volcanic gold core with soft bronze-gold outline topped by a hovering  
-   golden crown and anchored in a massive high-density vertical mound of gold coins. */
+/* Tier 12 (100): Royal Treasure Pile (Blazing liquid gold flow with white reflection) */
 @keyframes tqg-gold-flow {
   0%   { background-position-x: 0%; }
   100% { background-position-x: 200%; }
 }
-
 .g-tqgs {
   font-weight: 900;
   display: inline-block;
@@ -558,7 +546,6 @@ body {
   z-index: 1;
   padding: 0 0.12em;
 
-  /* Radiant Liquid Gold Flow with white-hot center reflection */
   background: linear-gradient(
     90deg,
     #b45309 0%,
@@ -577,109 +564,13 @@ body {
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
 
-  /* Clean gold-bronze stroke framing */
   -webkit-text-stroke: 0.6px #78350f;
-
   filter: 
     drop-shadow(0 0.5px 0px #78350f)
     drop-shadow(0 0 3px rgba(251, 191, 36, 0.85))
     drop-shadow(0 0 10px rgba(255, 234, 117, 0.3));
 
   animation: tqg-gold-flow 4s linear infinite;
-}
-
-/*  Duoquinquagintillion*/
-/* Purple-to-magenta crystalline gradient, floating shard reflections */
-@keyframes dqg-sweep {
-  to { background-position-x: 200%; }
-}
-
-.g-dqgs {
-  transform: translateZ(0);
-  display: inline-block;
-  position: relative;
-  padding: 0 0.15em;
-
-  /* Layered faceted stripe pattern + crystal violet-to-magenta gradient */
-  background: 
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0px, rgba(255, 255, 255, 0.12) 2px, transparent 2px, transparent 5px),
-    linear-gradient(90deg, #4c1d95 0%, #a855f7 25%, #fffbeb 50%, #ec4899 75%, #701a75 100%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-
-  /* Amethyst stroke contrast */
-  -webkit-text-stroke: 0.5px #4a044e;
-
-  /* 4-way sub-pixel outline to define boundaries on white templates */
-  filter:
-    drop-shadow(0 0.5px 0px #4a044e)
-    drop-shadow(0 -0.5px 0px #4a044e)
-    drop-shadow(0 0 3px rgba(236, 72, 153, 0.65))
-    drop-shadow(0 0 10px rgba(168, 85, 247, 0.3));
-
-  animation: dqg-sweep 6s linear infinite;
-}
-
-/*  Risk Split */
-/* Diagonal mint/coral split, central energy pulse */
-.g-sxqg {
-  transform: translateZ(0);
-  position: relative;
-  display: inline-block;
-  padding: 0 0.15em;
-  isolation: isolate;
-
-  /* Sharp diagonal split at exactly 50% */
-  background: linear-gradient(
-    45deg,
-    #00ff88 0%,
-    #00ff88 49.5%,
-    #ff4422 50.5%,
-    #ff4422 100%
-  );
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  -webkit-text-stroke: 0.5px #110301;
-  filter: drop-shadow(0 1.5px 1.5px rgba(17, 3, 1, 0.75));
-}
-
-/*  Vessel Lock */
-@keyframes qnqg-amber-sweep {
-  0%   { background-position: -200% 0, 0 0, 0 0; }
-  100% { background-position: 300% 0, 0 0, 0 0; }
-}
-
-.g-qnqg {
-  transform: translateZ(0);
-  display: inline-block;
-  position: relative;
-  padding: 0 0.12em;
-  isolation: isolate;
-
-  /* Fast amber sweep + engraved micro-lines + steel-blue gradient */
-  background: 
-    linear-gradient(90deg, rgba(255, 191, 0, 0) 0%, #ffffff 40%, #ffb300 50%, #ffb300 60%, rgba(255, 191, 0, 0) 100%) no-repeat,
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0px, rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 3px),
-    linear-gradient(180deg, #b0c4de 0%, #4682b4 40%, #1c3d5a 100%);
-  background-size: 150px 100%, 100% 100%, 100% 100%;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-
-  -webkit-text-stroke: 0.5px #1c3d5a;
-
-  /* Blue-steel glow text-shadow */
-  text-shadow:
-    0 0 3px rgba(70, 130, 180, 0.75),
-    0 0 10px rgba(70, 130, 180, 0.3);
-
-  animation: qnqg-amber-sweep 2s linear infinite;
 }
 
 /* Rarity auras */
@@ -701,9 +592,9 @@ body {
   filter: drop-shadow(0 -1px 6px rgba(168, 85, 247, 0.5));
 }
 .aura-legendary::before {
-  background: radial-gradient(ellipse at bottom, rgba(234, 88, 12, 0.8) 0%, rgba(245, 158, 11, 0.5) 45%, rgba(251, 191, 36, 0.15) 85%, transparent 100%);
+  background: radial-gradient(ellipse at bottom, rgba(234, 88, 12, 0.55) 0%, rgba(245, 158, 11, 0.32) 45%, rgba(251, 191, 36, 0.08) 85%, transparent 100%);
   animation: holy-fire-upward 3s ease-in-out infinite;
-  filter: drop-shadow(0 -1px 10px rgba(245, 158, 11, 0.7));
+  filter: drop-shadow(0 -1px 8px rgba(245, 158, 11, 0.45));
 }
 .aura-mythical::before {
   background: radial-gradient(
@@ -728,7 +619,7 @@ body {
     transform: scale(1.15, 1.2) translateY(-2px);
   }
 }
-/* God King aura: rainbow oil-slick, stronger than mythical */
+/* God King aura: rainbow oil-slick */
 .aura-godking {
   position: relative;
 }
@@ -742,23 +633,23 @@ body {
   z-index: 0;
   background: radial-gradient(
     ellipse at bottom,
-    rgba(168, 85, 247, 0.9) 0%,
-    rgba(236, 72, 153, 0.7) 20%,
-    rgba(234, 179, 8, 0.6) 40%,
-    rgba(34, 197, 94, 0.4) 60%,
-    rgba(59, 130, 246, 0.3) 80%,
+    rgba(168, 85, 247, 0.65) 0%,
+    rgba(236, 72, 153, 0.45) 20%,
+    rgba(234, 179, 8, 0.35) 40%,
+    rgba(34, 197, 94, 0.22) 60%,
+    rgba(59, 130, 246, 0.12) 80%,
     transparent 100%
   );
-  animation: holy-fire-upward 1.5s ease-in-out infinite, godking-hue 4s linear infinite;
-  filter: drop-shadow(0 -3px 18px rgba(168, 85, 247, 1)) drop-shadow(0 -1px 10px rgba(236, 72, 153, 0.8));
+  animation: holy-fire-upward 2s ease-in-out infinite, godking-hue 4s linear infinite;
+  filter: drop-shadow(0 -2px 10px rgba(168, 85, 247, 0.55)) drop-shadow(0 -1px 6px rgba(236, 72, 153, 0.35));
 }
 
 @keyframes godking-hue {
   0% {
-    filter: drop-shadow(0 -3px 18px rgba(168, 85, 247, 1)) drop-shadow(0 -1px 10px rgba(236, 72, 153, 0.8)) hue-rotate(0deg);
+    filter: drop-shadow(0 -2px 10px rgba(168, 85, 247, 0.55)) drop-shadow(0 -1px 6px rgba(236, 72, 153, 0.35)) hue-rotate(0deg);
   }
   100% {
-    filter: drop-shadow(0 -3px 18px rgba(168, 85, 247, 1)) drop-shadow(0 -1px 10px rgba(236, 72, 153, 0.8)) hue-rotate(360deg);
+    filter: drop-shadow(0 -2px 10px rgba(168, 85, 247, 0.55)) drop-shadow(0 -1px 6px rgba(236, 72, 153, 0.35)) hue-rotate(360deg);
   }
 }
 .aura-common,

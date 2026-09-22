@@ -270,6 +270,7 @@ export function ArkalonVision({
               disabled={roundState.phase === 'feedback'}
               enteredGlyphs={roundState.entered}
               expectedLength={sequence.length}
+              targetSequence={sequence}
             />
           </div>
         )}

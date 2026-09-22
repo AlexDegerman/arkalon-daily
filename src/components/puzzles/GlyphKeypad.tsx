@@ -8,6 +8,7 @@ interface GlyphKeypadProps {
   disabled?: boolean
   enteredGlyphs?: string[] // current input sequence for visual feedback
   expectedLength: number
+  targetSequence?: string[]
 }
 
 export function GlyphKeypad({
@@ -15,7 +16,8 @@ export function GlyphKeypad({
   onGlyphPress,
   disabled = false,
   enteredGlyphs = [],
-  expectedLength
+  expectedLength,
+  targetSequence
 }: GlyphKeypadProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, glyph: string) => {
@@ -35,19 +37,29 @@ export function GlyphKeypad({
         aria-label={`Entered ${enteredGlyphs.length} of ${expectedLength} glyphs`}
         aria-live="polite"
       >
-        {Array.from({ length: expectedLength }).map((_, i) => (
-          <span
-            key={i}
-            className={`flex h-9 w-9 items-center justify-center rounded border font-mono text-lg transition-colors ${
-              i < enteredGlyphs.length
-                ? 'border-accent-recall bg-accent-recall/10 text-text-primary'
-                : 'border-border-subtle text-transparent'
-            }`}
-            aria-hidden="true"
-          >
-            {enteredGlyphs[i] ?? '_'}
-          </span>
-        ))}
+        {Array.from({ length: expectedLength }).map((_, i) => {
+          const isEntered = i < enteredGlyphs.length
+          const isCorrect =
+            isEntered && targetSequence
+              ? enteredGlyphs[i] === targetSequence[i]
+              : true
+
+          return (
+            <span
+              key={i}
+              className={`flex h-9 w-9 items-center justify-center rounded border font-mono text-lg transition-colors ${
+                !isEntered
+                  ? 'border-border-subtle text-transparent'
+                  : isCorrect
+                    ? 'border-accent-recall bg-accent-recall/10 text-text-primary'
+                    : 'border-status-fail bg-status-fail/15 text-status-fail'
+              }`}
+              aria-hidden="true"
+            >
+              {enteredGlyphs[i] ?? '_'}
+            </span>
+          )
+        })}
       </div>
 
       {/* Glyph grid */}

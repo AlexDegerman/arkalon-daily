@@ -591,9 +591,9 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col overflow-x-hidden">
       <GameHeader category={category} familyIndex={puzzleInfo?.familyIndex} />
-      <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-4 py-4">
+      <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-2.5 sm:px-4 py-3 sm:py-4">
         {renderPuzzle()}
       </main>
     </div>

@@ -133,49 +133,50 @@ export function LeaderboardView() {
           </button>
         ))}
       </div>
-      {/* Summary Subtext */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] sm:text-xs font-mono text-text-muted px-1 mb-2">
-        <span className="truncate">
-          {period === 'daily'
-            ? activeCategory === 'total'
-              ? 'TODAY · ALL CATEGORIES'
-              : `${cat.displayName.toUpperCase()} #${result?.familyIndex ?? 1}`
-            : period === 'weekly'
-              ? `WEEK ${result?.weekStart} → ${result?.weekEnd}`
-              : 'ALL TIME'}
-          {isAggregate && result?.threshold ? ` · MIN ${result.threshold}` : ''}
-        </span>
-        {result?.totalPlayers !== undefined && result.totalPlayers > 0 ? (
-          <span className="shrink-0">
-            {result.totalPlayers.toLocaleString()}{' '}
-            {isAggregate ? 'RANKED' : 'PLAYERS'}
-            {result.playerRank != null && (
-              <span className="text-text-primary font-bold">
-                {' '}
-                · YOUR RANK #{result.playerRank}
-              </span>
-            )}
-          </span>
-        ) : (
-          <span className="text-text-muted">0 PLAYERS</span>
-        )}
-      </div>
+      
       {/* Below-threshold placeholder for the current player */}
       {isAggregate && result?.success && result.playerQualified === false && (
-        <div className="rounded-xl border border-border-subtle bg-surface-panel/80 p-4 mb-2 text-center">
-          <p className="text-[11px] font-mono font-black uppercase tracking-widest text-text-muted">
-            {provisional && provisional.plays >= (result.threshold ?? 0)
-              ? 'No clears yet'
-              : 'Not enough data yet'}
-          </p>
-          <p className="mt-1 text-[11px] font-mono text-text-muted">
-            {provisional
-              ? provisional.clears > 0
-                ? `${provisional.plays}/${result.threshold} puzzles ${periodNoun} · Avg ${provisional.avgScore.toFixed(1)}`
-                : `${provisional.plays}/${result.threshold} puzzles ${periodNoun} · score 15+ on one to rank`
-              : `0/${result.threshold} puzzles ${periodNoun}`}{' '}
-            (unranked)
-          </p>
+        <div className="rounded-lg border border-border-subtle bg-surface-panel/90 px-3 py-2 mb-2 flex flex-col gap-1 font-mono text-[10px]">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-[#F59E0B] tracking-wider uppercase flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] animate-pulse" />
+              PROVISIONAL STATUS
+            </span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: result?.threshold ?? 3 }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`w-2 h-2 rounded-xs transition-colors ${
+                    i < (provisional?.plays ?? 0)
+                      ? 'bg-accent-recall'
+                      : 'bg-border-subtle'
+                  }`}
+                />
+              ))}
+              <span className="ml-1 text-text-muted font-bold">
+                {provisional?.plays ?? 0}/{result?.threshold}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-text-muted">
+            <span>
+              {provisional && provisional.plays >= (result.threshold ?? 0)
+                ? 'Score 15+ on one puzzle to rank'
+                : `${(result?.threshold ?? 0) - (provisional?.plays ?? 0)} more ${
+                    (result?.threshold ?? 0) - (provisional?.plays ?? 0) === 1
+                      ? 'puzzle'
+                      : 'puzzles'
+                  } to rank`}
+            </span>
+            {provisional && provisional.clears > 0 && (
+              <span>
+                Avg:{' '}
+                <strong className="text-text-primary font-bold">
+                  {provisional.avgScore.toFixed(1)}
+                </strong>
+              </span>
+            )}
+          </div>
         </div>
       )}
 

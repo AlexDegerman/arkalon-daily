@@ -269,7 +269,11 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   )
 
   const chargesRemaining = data.chargeLimit - chargesUsed
-  const cellSizePx = Math.min(56, Math.floor(320 / data.gridSize))
+  const maxGridContentWidth = 260
+  const cellSizePx = Math.min(
+    52,
+    Math.floor((maxGridContentWidth - data.gridSize * 4) / data.gridSize)
+  )
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -317,7 +321,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
 
       {/* Grid */}
       <div
-        className="mx-auto w-fit rounded-xl border border-border-subtle bg-surface-panel p-3"
+        className="mx-auto w-fit max-w-full rounded-xl border border-border-subtle bg-surface-panel p-2 sm:p-3"
         role="grid"
         aria-label="Crystal Mine grid"
         aria-rowcount={data.gridSize}

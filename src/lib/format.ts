@@ -15,16 +15,17 @@ const SCORE_TIER_SOLID_COLORS: { min: number; color: string }[] = [
   { min: 100, color: '#ffd700' },
   { min: 96, color: '#fbbf24' },
   { min: 90, color: '#ec4899' },
-  { min: 85, color: '#00ff88' },
+  { min: 85, color: '#cceeff' },
   { min: 80, color: '#a855f7' },
   { min: 70, color: '#f59e0b' },
   { min: 60, color: '#5bc0be' },
-  { min: 50, color: '#a3e635' },
-  { min: 40, color: '#bcd7ff' },
+  { min: 50, color: '#7dd3fc' },
+  { min: 40, color: '#0ea5e9' },
   { min: 30, color: '#4ade80' },
   { min: 15, color: '#4682b4' },
-  { min: 0, color: '#10b981' }
+  { min: 0, color: '#94a3b8' }
 ]
+
 // html2canvas cannot paint background-clip: text or transparent fills,
 // so the share card renders the score as a solid tier-matched color.
 export function getScoreTierSolidColor(score: number): string {
