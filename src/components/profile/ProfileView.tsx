@@ -14,9 +14,14 @@ import { formatDateTime } from '@/lib/format'
 interface ProfileViewProps {
   profile: PlayerProfile
   stats: CategoryStats[]
+  isOwnProfile?: boolean
 }
 
-export function ProfileView({ profile, stats }: ProfileViewProps) {
+export function ProfileView({
+  profile,
+  stats,
+  isOwnProfile = true
+}: ProfileViewProps) {
   const averageScores = Object.fromEntries(
     stats
       .filter((s) => s.daysPlayed >= 3)
@@ -27,7 +32,7 @@ export function ProfileView({ profile, stats }: ProfileViewProps) {
   const displayName = profile.displayName ?? 'Player'
 
   return (
-    <div className="mx-auto flex w-full max-w-180 flex-col gap-5 px-4 py-6 pb-24">
+    <div className="mx-auto flex w-full max-w-180 flex-col gap-3 sm:gap-4 px-3 sm:px-4 py-3 sm:py-5 pb-16">
       {/* Identity Card */}
       <div className="rounded-xl border border-border-subtle bg-surface-panel p-4">
         <div className="flex items-center gap-3">
@@ -71,32 +76,34 @@ export function ProfileView({ profile, stats }: ProfileViewProps) {
       <CategoryStatsPanel stats={stats} />
 
       {/* Arkalon Core Network Account & Recovery Card */}
-      <div
-        className="w-full rounded-xl border border-border-subtle bg-surface-panel p-4"
-        id="recovery-section"
-      >
-        <p className="mb-1 text-xs uppercase tracking-wider text-text-muted font-semibold">
-          Arkalon Core Identity
-        </p>
-        <p className="mb-3 text-xs text-text-muted leading-relaxed">
-          Your profile is anchored by Arkalon Core. Access your recovery code or
-          switch devices on the Network Hub.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          <a
-            href="https://network.rpsleague.fi/settings?returnTo=https://daily.rpsleague.fi/profile"
-            className="flex-1 inline-flex items-center justify-center rounded-lg border border-border-subtle px-3 py-2 text-xs font-semibold text-text-primary hover:border-accent-recall transition-colors"
-          >
-            Reroll Nickname ↗
-          </a>
-          <a
-            href="https://network.rpsleague.fi/settings?tab=identity&returnTo=https://daily.rpsleague.fi/profile"
-            className="flex-1 inline-flex items-center justify-center rounded-lg bg-accent-recall/10 border border-accent-recall/40 px-3 py-2 text-xs font-semibold text-accent-recall hover:bg-accent-recall/20 transition-colors"
-          >
-            Reveal Recovery Code ↗
-          </a>
+      {isOwnProfile && (
+        <div
+          className="w-full rounded-xl border border-border-subtle bg-surface-panel p-4"
+          id="recovery-section"
+        >
+          <p className="mb-1 text-xs uppercase tracking-wider text-text-muted font-semibold">
+            Arkalon Core Identity
+          </p>
+          <p className="mb-3 text-xs text-text-muted leading-relaxed">
+            Your profile is anchored by Arkalon Core. Access your recovery code
+            or switch devices on the Network Hub.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            <a
+              href="https://network.rpsleague.fi/settings?returnTo=https://daily.rpsleague.fi/profile"
+              className="flex-1 inline-flex items-center justify-center rounded-lg border border-border-subtle px-3 py-2 text-xs font-semibold text-text-primary hover:border-accent-recall transition-colors"
+            >
+              Reroll Nickname ↗
+            </a>
+            <a
+              href="https://network.rpsleague.fi/settings?tab=identity&returnTo=https://daily.rpsleague.fi/profile"
+              className="flex-1 inline-flex items-center justify-center rounded-lg bg-accent-recall/10 border border-accent-recall/40 px-3 py-2 text-xs font-semibold text-accent-recall hover:bg-accent-recall/20 transition-colors"
+            >
+              Reveal Recovery Code ↗
+            </a>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

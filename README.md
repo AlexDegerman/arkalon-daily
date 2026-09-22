@@ -169,9 +169,10 @@ First contact with each category opens a Trial: a multi-screen explainer followe
 Each profile surfaces deterministic visual identity and per-category performance data:
 
 - **Deterministic avatar**: FNV-hash gradient hues derived from the player ID with nickname initials overlaid, producing a unique visual identity without any stored image.
-- **Identity card**: badge chips showing puzzles played, active streaks per category, and trial completion progress.
+- **Identity card**: badge chips showing puzzles played, active streaks per category, trial completion progress, and one-click public profile link copying.
+- **Shareable public profiles**: server-rendered public dossiers at `/profile/[id]` linked directly from leaderboard rows, withholding private recovery credentials.
 - **Skill Profile**: a bar chart of per-category score averages, shown once the player has 3+ plays in a category.
-- **Per-category stats panel**: best score, average score, days played, current streak, longest streak, and global percentile (suppressed below a 25-player population).
+- **Per-category stats panel**: today's attempt result (score and pass/fail status), best score, average score, days played, current streak, longest streak, and global percentile (suppressed below a 25-player population).
 
 ---
 

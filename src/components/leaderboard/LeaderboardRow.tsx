@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getScoreTierClass } from '@/lib/format'
 import { formatElapsedMs } from '@/lib/format'
 import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
@@ -69,16 +70,21 @@ export function LeaderboardRow({
         <td className="py-2.5 px-2 sm:px-3 align-top">
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span
+              <Link
+                href={
+                  entry.isCurrentPlayer
+                    ? '/profile'
+                    : `/profile/${entry.playerId}`
+                }
                 className={[
-                  'font-bold text-xs sm:text-sm wrap-break-word',
+                  'font-bold text-xs sm:text-sm wrap-break-word transition-colors hover:underline underline-offset-4',
                   entry.isCurrentPlayer
                     ? 'text-accent-recall'
-                    : 'text-text-primary'
+                    : 'text-text-primary hover:text-accent-recall'
                 ].join(' ')}
               >
                 {entry.displayName}
-              </span>
+              </Link>
               {entry.isCurrentPlayer && (
                 <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded bg-accent-recall/20 text-accent-recall border border-accent-recall/30">
                   YOU
