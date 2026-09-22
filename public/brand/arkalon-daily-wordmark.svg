@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 50" width="100%" height="100%">
+  <!-- ARKALON DAILY — STANDALONE WORDMARK -->
+  <defs>
+    <filter id="wordmark-glow" x="-10%" y="-20%" width="120%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <text x="5" y="36" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="28" letter-spacing="4" fill="#00FF88" filter="url(#wordmark-glow)">ARKALON DAILY</text>
+</svg>

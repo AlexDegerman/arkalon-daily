@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- ARKALON DAILY — MICRO 1D (32PX RETINA) -->
+  <rect width="32" height="32" rx="7" fill="#0B0F14"/>
+  <g transform="translate(-0.8, -0.8) scale(0.168)" fill="#00FF88">
+    <path d="
+      M 128 44
+      A 70 70 0 0 1 158 100
+      A 70 70 0 0 1 98 170
+      L 36 168
+      L 36 32
+      L 98 30
+      L 102 30
+      L 78 52
+      L 59 52
+      L 59 148
+      L 98 148
+      A 47 47 0 0 0 135 100
+      A 47 47 0 0 0 110 63
+      Z
+    "/>
+    <rect x="60" y="-5" width="12" height="10" transform="translate(96,100) rotate(15)"/>
+    <rect x="60" y="-5" width="12" height="10" transform="translate(96,100) rotate(35)"/>
+    <rect x="60" y="-5" width="12" height="10" transform="translate(96,100) rotate(55)"/>
+  </g>
+</svg>

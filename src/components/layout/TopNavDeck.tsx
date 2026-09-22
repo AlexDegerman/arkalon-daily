@@ -15,9 +15,16 @@ export function TopNavDeck() {
         <div className="w-full relative flex items-center justify-between lg:justify-center mb-2.5">
           <Link
             href="/"
-            className="text-[19px] min-[360px]:text-[21px] sm:text-2xl lg:text-3xl font-black tracking-wider sm:tracking-widest title-daily select-none whitespace-nowrap text-center"
+            className="flex items-center gap-2 text-[19px] min-[360px]:text-[21px] sm:text-2xl lg:text-3xl font-black tracking-wider sm:tracking-widest select-none whitespace-nowrap text-center"
           >
-            ARKALON DAILY
+            <img
+              src="/brand/arkalon-daily-emblem.svg"
+              alt="Arkalon Daily"
+              width={28}
+              height={28}
+              className="w-5 h-5 min-[360px]:w-6 min-[360px]:h-6 sm:w-7 sm:h-7 shrink-0 select-none"
+            />
+            <span className="title-daily">ARKALON DAILY</span>
           </Link>
 
           <div className="flex items-center gap-1.5 lg:absolute lg:right-0 shrink-0">
