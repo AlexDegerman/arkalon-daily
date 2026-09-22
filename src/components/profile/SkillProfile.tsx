@@ -12,18 +12,13 @@ export function SkillProfile({ scores }: SkillProfileProps) {
     (slug) => scores[slug] !== undefined
   )
 
-  if (categoriesWithData.length === 0) {
-    return (
-      <div className="w-full rounded-xl border border-border-subtle bg-surface-panel p-4">
-        <p className="mb-2 text-xs uppercase tracking-wider text-text-muted">
-          Skill Profile
-        </p>
-        <p className="text-xs text-text-muted">
+    if (categoriesWithData.length === 0) {
+      return (
+        <p className="w-full text-center text-xs text-text-muted">
           Play at least 3 rounds in a category to see your skill profile.
         </p>
-      </div>
-    )
-  }
+      )
+    }
 
   // Sort by score descending for display
   const sorted = [...CATEGORY_ORDER]

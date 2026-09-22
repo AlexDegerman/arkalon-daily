@@ -4,6 +4,11 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { TrialBanner } from '@/components/trial/TrialBanner'
 import { PauseOverlay } from '@/components/layout/PauseOverlay'
 import { useSound } from '@/hooks/useSound'
+import { usePuzzleStore } from '@/app/stores/puzzleStore'
+import {
+  SURGE_MAX_SIMULTANEOUS_NODES,
+  SURGE_NODE_HIT_RADIUS_PX
+} from '@/lib/puzzles/compositionSystem'
 import type {
   SurgeFrenzyData,
   SurgeNode
@@ -52,12 +57,12 @@ function useScale(containerRef: React.RefObject<HTMLDivElement | null>) {
 
 export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
   const { play } = useSound()
+  const pauseSignal = usePuzzleStore((s) => s.pauseSignal)
   const containerRef = useRef<HTMLDivElement>(null)
   const scale = useScale(containerRef)
 
   const [isPaused, setIsPaused] = useState(false)
   const [activeNodes, setActiveNodes] = useState<ActiveNode[]>([])
-  const [sessionOver, setSessionOver] = useState(false)
 
   // Mutable game state that does not need to trigger re-renders each frame
   const stateRef = useRef({
@@ -95,7 +100,7 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     onComplete({
       nodes: s.results,
       expectedNodeCount: data.expectedNodeCount,
-      totalElapsedMs: s.elapsedMs,
+      totalElapsedMs: Math.round(s.elapsedMs),
       avgReactionMs,
       correctTaps: hits.length,
       misses,
@@ -103,6 +108,9 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     })
   }, [data.expectedNodeCount, onComplete])
 
+  useEffect(() => {
+    if (pauseSignal > 0) setIsPaused(true)
+  }, [pauseSignal])
   // Pause on tab hidden
   useEffect(() => {
     function handleVisibility() {
@@ -153,6 +161,7 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
       s.elapsedMs = elapsed
 
       if (elapsed >= data.sessionDurationMs) {
+        play('surge-end')
         // Session ended - expire remaining active nodes as misses
         setActiveNodes((prev) => {
           prev.forEach((n) => {
@@ -179,7 +188,7 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
         setActiveNodes((prev) => {
           // Enforce max simultaneous nodes - expire the oldest if at limit
           let next = [...prev]
-          if (next.length >= 4) {
+          if (next.length >= SURGE_MAX_SIMULTANEOUS_NODES) {
             const oldest = next[0]
             // Record as miss
             s.results.push({
@@ -310,7 +319,7 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
           const py = node.y * scale
           const r = node.currentRadius * scale
           const color = node.isDecoy ? '#ff3b5c' : '#00d4ff'
-          const minTapSize = 48 * scale
+          const minTapSize = SURGE_NODE_HIT_RADIUS_PX * scale
           const tapR = Math.max(r, minTapSize / 2)
 
           return (
@@ -318,7 +327,6 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
               key={node.id}
               onClick={(e) => handleNodeTap(node, e)}
               onTouchStart={(e) => {
-                e.preventDefault()
                 handleNodeTap(node, e)
               }}
               aria-label={node.isDecoy ? 'Decoy node - avoid' : 'Tap node'}
@@ -359,7 +367,7 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
 
       {/* Controls hint */}
       <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>Tap glowing nodes &mdash; avoid red decoys</span>
+        <span>Tap glowing nodes &middot; avoid red decoys</span>
         <button
           onClick={() => setIsPaused(true)}
           aria-label="Pause game"

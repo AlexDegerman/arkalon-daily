@@ -8,9 +8,31 @@ export function getScoreTierClass(score: number): string {
   for (const { min, cls } of SCORE_TIER_THRESHOLDS) {
     if (score >= min) return cls
   }
-  return 'g-m1' // Fallback to Million/Micro tier styling
+  return 'g-vg' // Fallback to the lowest mapped tier
 }
 
+const SCORE_TIER_SOLID_COLORS: { min: number; color: string }[] = [
+  { min: 100, color: '#ffd700' },
+  { min: 96, color: '#fbbf24' },
+  { min: 90, color: '#ec4899' },
+  { min: 85, color: '#00ff88' },
+  { min: 80, color: '#a855f7' },
+  { min: 70, color: '#f59e0b' },
+  { min: 60, color: '#5bc0be' },
+  { min: 50, color: '#a3e635' },
+  { min: 40, color: '#bcd7ff' },
+  { min: 30, color: '#4ade80' },
+  { min: 15, color: '#4682b4' },
+  { min: 0, color: '#10b981' }
+]
+// html2canvas cannot paint background-clip: text or transparent fills,
+// so the share card renders the score as a solid tier-matched color.
+export function getScoreTierSolidColor(score: number): string {
+  for (const { min, color } of SCORE_TIER_SOLID_COLORS) {
+    if (score >= min) return color
+  }
+  return '#10b981'
+}
 // Maps a 0-100 score to its rarity string for result frame and badge styling.
 export function getScoreRarity(score: number): string {
   for (const { min, rarity } of RARITY_SCORE_THRESHOLDS) {

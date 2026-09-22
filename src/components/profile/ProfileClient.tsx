@@ -4,13 +4,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProfileView } from './ProfileView'
 import { RecoveryTutorialOverlay } from './RecoveryTutorialOverlay'
-import { RecoveryCodeEntry } from './RecoveryCodeEntry'
 import { getPlayerProfile } from '@/app/actions/getPlayerProfile'
-import { restoreProfile } from '@/app/actions/restoreProfile'
 import { markRecoveryTutorialShown } from '@/app/actions/markRecoveryTutorialShown'
 import type { PlayerProfile, CategoryStats } from '@/types/puzzle'
 
-type PagePhase = 'loading' | 'loaded' | 'error' | 'no-player'
+type PagePhase = 'loading' | 'loaded' | 'error'
 
 export function ProfileClient() {
   const router = useRouter()
@@ -28,37 +26,39 @@ export function ProfileClient() {
   }
 
   useEffect(() => {
-    const playerId = getPlayerId()
-    if (!playerId) {
-      setPhase('no-player')
-      return
-    }
+    const localId = getPlayerId()
 
-    getPlayerProfile(playerId).then((res) => {
+    getPlayerProfile(localId).then((res) => {
       if (!res.success || !res.profile) {
         setPhase('error')
         return
       }
+
+      // Sync resolved player ID to localStorage
+      try {
+        localStorage.setItem('arkalon_daily_player_id', res.profile.id)
+      } catch {}
+
       setProfile(res.profile)
       setStats(res.stats ?? [])
-      // Show tutorial overlay if this is the first profile visit
+
+      // Show tutorial overlay if the server says it hasn't been acknowledged yet
       if (!res.profile.recoveryTutorialShown) {
         setShowTutorial(true)
       }
+
       setPhase('loaded')
     })
   }, [])
 
   const handleTutorialDismiss = useCallback(async () => {
     setShowTutorial(false)
-    // Set localStorage flag so CategorySurface knows to suppress recovery prompt
-    try {
-      localStorage.setItem('arkalon_daily_recovery_tutorial_shown', 'true')
-    } catch {
-      // localStorage unavailable
-    }
     const playerId = getPlayerId()
     if (playerId) {
+      try {
+        localStorage.setItem('arkalon_daily_recovery_tutorial_shown', 'true')
+      } catch {}
+
       await markRecoveryTutorialShown(playerId)
       setProfile((prev) =>
         prev ? { ...prev, recoveryTutorialShown: true } : prev
@@ -66,42 +66,28 @@ export function ProfileClient() {
     }
   }, [])
 
-  const handleRestore = useCallback(
-    async (code: string): Promise<{ success: boolean; error?: string }> => {
-      const result = await restoreProfile(code)
-      if (!result.success) {
-        return { success: false, error: result.error }
-      }
-      // Store the restored player ID and reload
-      try {
-        localStorage.setItem('arkalon_daily_player_id', result.playerId!)
-      } catch {
-        return { success: false, error: 'Could not save to local storage' }
-      }
-      // Reload to show the restored profile
-      router.refresh()
-      return { success: true }
-    },
-    [router]
-  )
-
   if (phase === 'loading') {
     return (
-      <main className="flex flex-1 items-center justify-center py-12">
-        <p className="text-sm text-text-muted">Loading profile...</p>
+      <main className="flex flex-1 items-center justify-center py-16">
+        <p className="text-xs font-mono text-text-muted animate-pulse">
+          TRANSMITTING PROFILE DATA...
+        </p>
       </main>
     )
   }
 
-  if (phase === 'no-player' || phase === 'error') {
+  if (phase === 'error') {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-12">
-        <p className="text-sm text-text-muted">
-          {phase === 'no-player'
-            ? 'No profile found. Play a puzzle to create one.'
-            : 'Could not load your profile.'}
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+        <p className="text-xs font-mono text-status-fail">
+          Could not load your profile.
         </p>
-        <RecoveryCodeEntry onRestore={handleRestore} />
+        <button
+          onClick={() => router.push('/')}
+          className="rounded-lg border border-border-subtle bg-surface-panel px-4 py-2 text-xs font-mono text-text-primary hover:border-accent-recall transition-colors"
+        >
+          RETURN HOME
+        </button>
       </main>
     )
   }
@@ -111,15 +97,10 @@ export function ProfileClient() {
       <main className="flex-1 overflow-y-auto">
         <h1 className="sr-only">Player Profile</h1>
         <ProfileView profile={profile!} stats={stats} />
-        <div className="mx-auto max-w-180 px-4 pb-24">
-          <RecoveryCodeEntry onRestore={handleRestore} />
-        </div>
       </main>
-      {showTutorial && profile && (
-        <RecoveryTutorialOverlay
-          recoveryCode={profile.recoveryCode}
-          onDismiss={handleTutorialDismiss}
-        />
+
+      {showTutorial && (
+        <RecoveryTutorialOverlay onDismiss={handleTutorialDismiss} />
       )}
     </>
   )

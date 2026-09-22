@@ -271,6 +271,9 @@ export function WildPrediction({
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
+        if (prev !== null && prev <= 3 && prev > 1) {
+          play('timer-tick')
+        }
         if (prev === null || prev <= 1) {
           clearInterval(interval)
           // Time up - count as incorrect, advance
@@ -285,6 +288,12 @@ export function WildPrediction({
 
     return () => clearInterval(interval)
   }, [roundIndex, data.timerSeconds])
+  // Urgency tick on each of the final three seconds of a timed round
+  useEffect(() => {
+    if (timeLeft !== null && timeLeft <= 3 && timeLeft > 0) {
+      play('timer-tick')
+    }
+  }, [timeLeft, play])
 
   // Save turn-based state to localStorage
   useEffect(() => {
@@ -307,6 +316,7 @@ export function WildPrediction({
       if (wasCorrect) correctRoundsRef.current++
 
       setTimeout(() => {
+        play('cipher-next')
         setFeedback(null)
         setSelectedIndex(null)
 
@@ -374,14 +384,7 @@ export function WildPrediction({
   )
 
   if (!currentRound) return null
-
-  const correctIndex = currentRound.choices.findIndex(
-    (c) =>
-      c.shape === currentRound.correctAnswer.shape &&
-      c.color === currentRound.correctAnswer.color &&
-      c.size === currentRound.correctAnswer.size
-  )
-
+  
   return (
     <div className="flex w-full flex-col gap-4">
       {isTrial && <TrialBanner />}

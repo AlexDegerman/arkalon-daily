@@ -13,6 +13,8 @@ import {
 import { useUiStore } from '@/app/stores/uiStore'
 import { TTS_LINES } from '@/lib/ttsLines'
 import { useActiveView } from '@/hooks/useActiveView'
+import { useBGM } from '@/hooks/useBGM'
+import { TopNavDeck } from '@/components/layout/TopNavDeck'
 
 // Hydrates sound preferences from localStorage on mount
 function useSoundPersistence() {
@@ -91,9 +93,9 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const arkalonTTSEnabled = useUiStore((s) => s.arkalonTTSEnabled)
   const arkalonVolume = useUiStore((s) => s.arkalonVolume)
   const activeView = useActiveView()
-
   useSoundPersistence()
   useSoundPersistenceWrite()
+  useBGM()
 
   // Prime voices on first interaction
   useEffect(() => {
@@ -128,17 +130,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     <>
       <WelcomeModal />
       <UpdateModal />
-      {/* Global header with sound control on non-game views */}
-      {activeView !== 'game' && (
-        <header className="flex items-center justify-between px-4 py-3">
-          <span className="text-xs font-semibold tracking-widest text-text-muted">
-            ARKALON DAILY
-          </span>
-          <SoundControlButton />
-        </header>
-      )}
+      {activeView !== 'game' && <TopNavDeck />}
       {children}
-      {activeView !== 'game' && <BottomNav />}
     </>
   )
 }

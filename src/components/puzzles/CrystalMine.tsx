@@ -23,19 +23,39 @@ interface CrystalMineProps {
   onComplete: (result: CrystalMineResult) => void
 }
 
-type CellState = 'hidden' | 'clue' | 'deposit-found' | 'empty' | 'pre-revealed'
+type CellState =
+  | 'hidden'
+  | 'clue'
+  | 'deposit-found'
+  | 'empty'
+  | 'pre-revealed'
+  | 'marked'
 
-function getCellState(cell: GridCell, revealed: Set<string>): CellState {
+function getCellState(
+  cell: GridCell,
+  revealed: Set<string>,
+  marked: Set<string>
+): CellState {
   const key = `${cell.row},${cell.col}`
   if (cell.isClue) return 'clue'
-  if (!revealed.has(key)) return 'hidden'
+  if (!revealed.has(key)) {
+    if (marked.has(key)) return 'marked'
+    return 'hidden'
+  }
   if (cell.isDeposit) return 'deposit-found'
   return 'empty'
 }
 
 export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   const { play } = useSound()
-
+  const [isMarking, setIsMarking] = useState(false)
+  const [marked, setMarked] = useState<Set<string>>(new Set())
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressFiredRef = useRef(false)
+  // Deposits revealed at start are free finds - they never cost a charge
+  const preRevealedDeposits = data.grid
+    .flat()
+    .filter((c) => c.isDeposit && c.isRevealed && !c.isClue).length
   // Track which non-clue cells have been excavated
   const [revealed, setRevealed] = useState<Set<string>>(() => {
     const initial = new Set<string>()
@@ -48,14 +68,34 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   })
 
   const [chargesUsed, setChargesUsed] = useState(0)
-  const [depositsFound, setDepositsFound] = useState(() => {
-    // Count pre-revealed deposits
-    return data.grid
-      .flat()
-      .filter((c) => c.isDeposit && c.isRevealed && !c.isClue).length
-  })
+    const [depositsFound, setDepositsFound] = useState(
+      () => preRevealedDeposits
+    )
   const [finished, setFinished] = useState(false)
-  const sessionStartRef = useRef(Date.now())
+    const sessionStartRef = useRef(Date.now())
+
+    useEffect(() => {
+      return () => {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+      }
+    }, [])
+
+    const toggleMark = useCallback(
+      (cell: GridCell) => {
+        if (finished) return
+        if (cell.isClue) return
+        const key = `${cell.row},${cell.col}`
+        if (revealed.has(key)) return
+        const newMarked = new Set(marked)
+        if (newMarked.has(key)) newMarked.delete(key)
+        else {
+          newMarked.add(key)
+          play('mark-tile') // RPS cards.wav sounds like placing a physical flag
+        }
+        setMarked(newMarked)
+      },
+      [finished, revealed, marked, play]
+    )
 
   // Persist turn-based state to localStorage
   useEffect(() => {
@@ -78,10 +118,17 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   const handleCellClick = useCallback(
     (cell: GridCell) => {
       if (finished) return
+      if (longPressFiredRef.current) {
+        longPressFiredRef.current = false
+        return
+      }
       if (cell.isClue) return
-
       const key = `${cell.row},${cell.col}`
       if (revealed.has(key)) return
+      if (isMarking) {
+        toggleMark(cell)
+        return
+      }
 
       const newCharges = chargesUsed + 1
       const newRevealed = new Set(revealed)
@@ -89,10 +136,10 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
 
       let newDepositsFound = depositsFound
       if (cell.isDeposit) {
-        play('deposit-found')
+        play('crystal-found')
         newDepositsFound++
       } else {
-        play('charge-spent')
+        play('dig-empty')
       }
 
       setRevealed(newRevealed)
@@ -106,8 +153,10 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       if (allFound || outOfCharges) {
         setFinished(true)
         const totalElapsedMs = Date.now() - sessionStartRef.current
-        const wastedCharges = newCharges - newDepositsFound
-        const maxWaste = data.chargeLimit - data.depositCount
+        const wastedCharges =
+          newCharges - (newDepositsFound - preRevealedDeposits)
+        const maxWaste =
+          data.chargeLimit - data.depositCount + preRevealedDeposits
         const efficiencyPct =
           maxWaste > 0
             ? Math.round(Math.max(0, (1 - wastedCharges / maxWaste) * 100))
@@ -127,7 +176,18 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         }, 600)
       }
     },
-    [finished, revealed, chargesUsed, depositsFound, data, play, onComplete]
+    [
+      finished,
+      revealed,
+      chargesUsed,
+      depositsFound,
+      data,
+      play,
+      onComplete,
+      isMarking,
+      toggleMark,
+      preRevealedDeposits
+    ]
   )
 
   const chargesRemaining = data.chargeLimit - chargesUsed
@@ -142,6 +202,16 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         <span>
           {'\uD83D\uDD37'} {depositsFound}/{data.depositCount} found
         </span>
+        <button
+          onClick={() => setIsMarking((m) => !m)}
+          className={`px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider transition-colors ${
+            isMarking
+              ? 'border-[#F59E0B] bg-[#F59E0B]/20 text-[#F59E0B]'
+              : 'border-border-subtle text-text-muted hover:text-text-primary'
+          }`}
+        >
+          {isMarking ? '🚩 Mark' : '⛏️ Dig'}
+        </button>
         <span>
           Charges:{' '}
           <span
@@ -162,6 +232,10 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
           {data.clueType.replace('_', ' ')}
         </span>
       </p>
+      {/* Marking hint */}
+      <p className="text-xs text-text-muted">
+        Right-click or hold a tile to mark it instead of digging
+      </p>
 
       {/* Grid */}
       <div
@@ -179,7 +253,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
             aria-rowindex={rowIdx + 1}
           >
             {row.map((cell) => {
-              const state = getCellState(cell, revealed)
+              const state = getCellState(cell, revealed, marked)
               const key = `${cell.row},${cell.col}`
 
               let bg = 'bg-bg-base hover:bg-border-subtle border-border-subtle'
@@ -211,11 +285,20 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                   </span>
                 )
                 ariaLabel += ', excavated, empty'
+              } else if (state === 'marked') {
+                bg = 'bg-[#F59E0B]/10 border-[#F59E0B]/40 cursor-pointer'
+                textContent = (
+                  <span className="text-sm" aria-hidden="true">
+                    🚩
+                  </span>
+                )
+                ariaLabel += ', marked'
               } else {
                 ariaLabel += ', hidden'
               }
 
-              const isInteractive = state === 'hidden' && !finished
+              const isInteractive =
+                (state === 'hidden' || state === 'marked') && !finished
 
               return (
                 <button
@@ -224,6 +307,26 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                   aria-colindex={cell.col + 1}
                   aria-label={ariaLabel}
                   onClick={() => handleCellClick(cell)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    if (longPressFiredRef.current) return
+                    toggleMark(cell)
+                  }}
+                  onPointerDown={() => {
+                    longPressFiredRef.current = false
+                    longPressTimerRef.current = setTimeout(() => {
+                      longPressFiredRef.current = true
+                      toggleMark(cell)
+                    }, 450)
+                  }}
+                  onPointerUp={() => {
+                    if (longPressTimerRef.current)
+                      clearTimeout(longPressTimerRef.current)
+                  }}
+                  onPointerLeave={() => {
+                    if (longPressTimerRef.current)
+                      clearTimeout(longPressTimerRef.current)
+                  }}
                   disabled={!isInteractive}
                   style={{ width: cellSizePx, height: cellSizePx }}
                   className={[

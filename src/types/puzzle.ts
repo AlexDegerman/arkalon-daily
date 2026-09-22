@@ -2,8 +2,6 @@ export type PuzzleCategory = 'recall' | 'surge' | 'cipher' | 'strike' | 'depths'
 
 export type PuzzleStatus = 'available' | 'trial' | 'solved' | 'failed'
 
-export type ResultStatus = 'solved' | 'failed'
-
 export type ScoringModel = 'speed-first' | 'logic-first' | 'continuous'
 
 export type SpawnPatternId =
@@ -61,14 +59,6 @@ export type SpatialLayoutId =
   | 'asymmetrical'
   | 'narrow_corridor'
 
-export type IntensityProfileId =
-  | 'ramp'
-  | 'sudden_spike'
-  | 'wave'
-  | 'endurance'
-  | 'pressure'
-  | 'mixed'
-
 export type MotionFunctionId = 'linear' | 'sinusoidal' | 'erratic' | 'deceptive'
 
 export type PatternGeneratorId =
@@ -91,7 +81,6 @@ export interface ChallengeProfile {
   displayDurationMs?: number
   glyphPool?: number
   gridSize?: number
-  targetCount?: number
   chargeLimit?: number
   timerSeconds?: number | null
   choiceCount?: number
@@ -102,7 +91,6 @@ export interface ChallengeProfile {
   targetBehavior?: TargetBehaviorId
   timingProfile?: TimingProfileId
   spatialLayout?: SpatialLayoutId
-  intensityProfile?: IntensityProfileId
   clueType?: ClueTypeId
   depositPattern?: number
   patternGenerators?: PatternGeneratorId[]
@@ -110,6 +98,7 @@ export interface ChallengeProfile {
   hasDecoyTargets?: boolean
   reverseEntry?: boolean
   randomizedLayout?: boolean
+  shotCount?: number
 }
 
 export interface ResultMetricDefinition {
@@ -139,26 +128,18 @@ export interface DailyPuzzleInfo {
   familyIndex: number
 }
 
-export interface DailyResultInfo {
-  category: PuzzleCategory
-  status: ResultStatus
-  normalizedScore: number
-  elapsedMs: number
-  puzzleFamilyId: string
-}
-
 export interface CategoryStatus {
   category: PuzzleCategory
   status: PuzzleStatus
   score?: number
   streakDays: number
   trialCompleted: boolean
+  yesterdayScore?: number
 }
 
 export interface PlayerProfile {
   id: string
   displayName: string | null
-  recoveryCode: string
   createdAt: string
   trialsCompleted: string[]
   recoveryTutorialShown: boolean
@@ -177,7 +158,6 @@ export interface CategoryStats {
 export interface ShareResult {
   type: PuzzleCategory | 'all-complete'
   category: PuzzleCategory
-  familyName: string
   familyIndex: number
   score: number
   metrics: Record<string, unknown>

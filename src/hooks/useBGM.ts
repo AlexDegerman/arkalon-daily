@@ -3,8 +3,8 @@
 import { useEffect, useRef, useCallback } from 'react'
 import {
   useMusicStore,
-  BGMContext,
-  BGM_TRACK_MAP
+  BGM_TRACKS,
+  type BGMContext
 } from '@/app/stores/musicStore'
 import { useUiStore } from '@/app/stores/uiStore'
 
@@ -13,13 +13,17 @@ const CROSSFADE_STEPS = 20
 
 export function useBGM() {
   const context = useMusicStore((s) => s.context)
+  const trackId = useMusicStore((s) => s.trackId)
+  const advanceTrack = useMusicStore((s) => s.advanceTrack)
   const setIsPlaying = useMusicStore((s) => s.setIsPlaying)
   const setIsCrossfading = useMusicStore((s) => s.setIsCrossfading)
+  const track =
+    BGM_TRACKS[context].find((t) => t.id === trackId) ??
+    BGM_TRACKS[context][0]
   const musicEnabled = useUiStore((s) => s.musicEnabled)
   const musicVolume = useUiStore((s) => s.musicVolume)
 
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
-  const targetContextRef = useRef<BGMContext>(context)
 
   const stopCurrent = useCallback((fadeOut = true) => {
     const audio = currentAudioRef.current
@@ -46,7 +50,6 @@ export function useBGM() {
   }, [])
 
   const switchContext = useCallback((newContext: BGMContext) => {
-    targetContextRef.current = newContext
     useMusicStore.getState().setContext(newContext)
   }, [])
 
@@ -56,24 +59,21 @@ export function useBGM() {
       setIsPlaying(false)
       return
     }
-
-    const track = BGM_TRACK_MAP[context]
+    const src = track.src
     const prev = currentAudioRef.current
-
     // Already playing this track - compare by track path suffix
-    if (prev && !prev.paused && prev.src.includes(track)) {
+    if (prev && !prev.paused && prev.src.includes(src)) {
       return
     }
-
     setIsCrossfading(true)
-
-    const audio = new Audio(track)
-    audio.loop = true
+    const audio = new Audio(src)
+    audio.loop = track.loop
     audio.volume = 0
-
+    // Non-looping tracks rotate to another track of the same context
+    const handleEnded = () => advanceTrack()
+    if (!track.loop) audio.addEventListener('ended', handleEnded)
     if (prev) stopCurrent(true)
     currentAudioRef.current = audio
-
     audio
       .play()
       .then(() => {
@@ -96,11 +96,31 @@ export function useBGM() {
         // Autoplay blocked - wait for user interaction
         setIsCrossfading(false)
       })
-
     return () => {
-      // Cleanup on unmount only - context switches are handled above
+      // Detach from the outgoing audio element; context switches are
+      // handled above
+      audio.removeEventListener('ended', handleEnded)
     }
-  }, [context, musicEnabled])
+  }, [track, musicEnabled, advanceTrack])
+  // Browsers block autoplay until first interaction - retry once unlocked
+  useEffect(() => {
+    if (!musicEnabled) return
+    function handleInteraction() {
+      const audio = currentAudioRef.current
+      if (audio && audio.paused) {
+        audio.volume = musicVolume
+        audio.play().catch(() => {
+          // Still blocked - wait for the next interaction
+        })
+      }
+    }
+    const events = ['pointerdown', 'keydown', 'touchend'] as const
+    events.forEach((e) =>
+      window.addEventListener(e, handleInteraction, { passive: true })
+    )
+    return () =>
+      events.forEach((e) => window.removeEventListener(e, handleInteraction))
+  }, [musicEnabled, musicVolume])
 
   // Apply volume changes to the current track without restarting
   useEffect(() => {

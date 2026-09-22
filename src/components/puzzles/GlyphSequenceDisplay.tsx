@@ -6,6 +6,7 @@ interface GlyphSequenceDisplayProps {
   sequence: string[]
   displayDurationMs: number
   onComplete: () => void
+  onTick?: (index: number) => void
 }
 
 // Displays the glyph sequence for the memory phase, then transitions
@@ -13,11 +14,14 @@ interface GlyphSequenceDisplayProps {
 export function GlyphSequenceDisplay({
   sequence,
   displayDurationMs,
-  onComplete
+  onComplete,
+  onTick
 }: GlyphSequenceDisplayProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
+  const onTickRef = useRef(onTick)
+  onTickRef.current = onTick
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const postDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -32,11 +36,12 @@ export function GlyphSequenceDisplay({
 
     const startDelay = setTimeout(() => {
       setActiveIndex(0)
+      onTickRef.current?.(0)
       index = 1
-
       intervalRef.current = setInterval(() => {
         if (index < sequence.length) {
           setActiveIndex(index)
+          onTickRef.current?.(index)
           index++
         } else {
           if (intervalRef.current) clearInterval(intervalRef.current)

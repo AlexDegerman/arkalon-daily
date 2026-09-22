@@ -1,104 +1,101 @@
 // Browser SpeechSynthesis wrapper with voice selection, pause handling,
-// and cooldown protection.
+// and cooldown protection for the Arkalon voice system.
 
-const COOLDOWN_MS = 800
-const PAUSE_DURATION_MS = 320
+let lastSpeakTime = 0
+const COOLDOWN_MS = 500
 
-let lastSpokenAt = 0
-let voicesLoaded = false
+let cachedVoices: SpeechSynthesisVoice[] = []
 
-// Replaces "..." in text with silence padding via multiple utterances.
-// SpeechSynthesis has no SSML support in browsers, so pauses are
-// simulated by splitting on "..." and chaining utterances with delays.
-function buildPausedUtterances(
-  text: string,
-  volume: number
-): SpeechSynthesisUtterance[] {
-  const voice = pickVoice()
-  const segments = text.split('...')
-  return segments.map((segment) => {
-    const utt = new SpeechSynthesisUtterance(segment.trim())
-    utt.rate = 0.82
-    utt.pitch = 0.7
-    utt.volume = Math.min(1, Math.max(0, volume))
-    if (voice) utt.voice = voice
-    return utt
-  })
+function loadVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined') return []
+  const v = window.speechSynthesis.getVoices()
+  if (v.length > 0) cachedVoices = v
+  return cachedVoices
 }
 
-function pickVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return null
-  const voices = window.speechSynthesis.getVoices()
-  const preferred = [
+function getArkalonVoice(): SpeechSynthesisVoice | null {
+  const voices = loadVoices()
+  if (!voices.length) return null
+
+  const targetNames = [
     'Google UK English Male',
-    'Microsoft David',
-    'Microsoft Mark',
-    'en-GB',
-    'en-US'
+    'Microsoft David Desktop',
+    'Microsoft David - English (United States)',
+    'English (United Kingdom)'
   ]
-  for (const name of preferred) {
-    const match = voices.find(
-      (v) => v.name.includes(name) || v.lang.startsWith(name)
-    )
-    if (match) return match
+
+  for (const name of targetNames) {
+    const found = voices.find((v) => v.name === name)
+    if (found) return found
   }
-  // Fall back to a generic English voice if preferred voices are unavailable.
+
   return (
     voices.find(
-      (v) => v.lang.startsWith('en') && v.name.toLowerCase().includes('male')
-    ) ||
-    voices.find((v) => v.lang.startsWith('en')) ||
-    null
+      (v) => v.name.toLowerCase().includes('male') && v.lang.startsWith('en')
+    ) ??
+    voices.find((v) => v.lang.startsWith('en')) ??
+    voices[0]
   )
+}
+
+function formatArkalonSpeech(text: string): string {
+  return text
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '') // Remove emojis
+    .replace(/[^\w\s.,!?'-]/g, '')
+    .replace(/\.{3}/g, '') // Strip existing "..." so the formatter handles pacing cleanly
+    .trim()
 }
 
 // Call once on first user interaction to unlock SpeechSynthesis on mobile.
 export function unlockArkalon(): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return
-  const utt = new SpeechSynthesisUtterance('')
-  utt.volume = 0
-  window.speechSynthesis.speak(utt)
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  window.speechSynthesis.getVoices()
+  const utterance = new SpeechSynthesisUtterance('')
+  utterance.volume = 0
+  window.speechSynthesis.speak(utterance)
 }
 
 // Preloads available voices. Must be called after user interaction on some browsers.
 export function primeArkalonVoices(): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return
-  if (voicesLoaded) return
-  const voices = window.speechSynthesis.getVoices()
-  if (voices.length > 0) {
-    voicesLoaded = true
-    return
-  }
-  window.speechSynthesis.onvoiceschanged = () => {
-    voicesLoaded = true
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  loadVoices()
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = loadVoices
   }
 }
 
 // Speaks text with configured voice, pacing, and cooldown handling.
-// Respects cooldown; cancels any currently speaking utterance before starting.
-export function speakArkalon(text: string, volume = 0.5): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return
-  const now = Date.now()
-  if (now - lastSpokenAt < COOLDOWN_MS) return
-  lastSpokenAt = now
+export function speakArkalon(text: string, volume = 0.88): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
 
+  const now = Date.now()
+  if (now - lastSpeakTime < COOLDOWN_MS) return
+  lastSpeakTime = now
+
+  const cleaned = formatArkalonSpeech(text)
+  if (!cleaned) return
+
+  const words = cleaned.split(' ')
+
+  // Apply dramatic pacing through synthetic pauses
+  const mythicalText =
+    words.length <= 6
+      ? `... ${words.join('... ')} ...`
+      : `... ${cleaned.replace(/[.,!?]/g, '...')} ...`
+
+  // Cancel any ongoing speech
   window.speechSynthesis.cancel()
 
-  const utterances = buildPausedUtterances(text, volume)
-  if (utterances.length === 0) return
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(mythicalText)
 
-  let index = 0
-  function speakNext() {
-    if (index >= utterances.length) return
-    const utt = utterances[index]
-    utt.onend = () => {
-      index++
-      if (index < utterances.length) {
-        setTimeout(speakNext, PAUSE_DURATION_MS)
-      }
-    }
-    window.speechSynthesis.speak(utt)
-  }
+    utterance.rate = 0.75
+    utterance.pitch = 0.25
+    utterance.volume = volume
 
-  speakNext()
+    const voice = getArkalonVoice()
+    if (voice) utterance.voice = voice
+
+    window.speechSynthesis.speak(utterance)
+  }, 50)
 }

@@ -1,56 +1,36 @@
 'use client'
 
 import { useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { PuzzleCategory, PuzzleStatus } from '@/types/puzzle'
-import { CATEGORIES, CATEGORY_BORDER_MAP } from '@/constants/categories'
+import { CATEGORIES } from '@/constants/categories'
+import { getScoreTierClass } from '@/lib/format'
 
 interface CategoryCardProps {
   category: PuzzleCategory
   status: PuzzleStatus
   score?: number
   streakDays: number
+  yesterdayScore?: number
 }
 
-const STATUS_BADGE: Record<PuzzleStatus, string> = {
+const STATUS_LABEL: Record<PuzzleStatus, string> = {
   available: 'PLAY',
   trial: 'TRY IT',
   solved: 'DONE',
   failed: 'FAILED'
 }
 
-const STATUS_BORDER: Record<PuzzleStatus, string> = {
-  available: 'border-opacity-100',
-  trial: 'border-dashed border-opacity-100',
-  solved: 'border-opacity-40',
-  failed: 'border-opacity-40'
-}
-
-const STATUS_PULSE: Record<PuzzleStatus, boolean> = {
-  available: true,
-  trial: true,
-  solved: false,
-  failed: false
-}
-
-function StreakBadge({ days }: { days: number }) {
-  if (days < 1) return null
-  return (
-    <span className="text-xs text-text-muted">
-      {'\uD83D\uDD25'} {days}-day streak
-    </span>
-  )
-}
-
 export function CategoryCard({
   category,
   status,
   score,
-  streakDays
+  streakDays,
+  yesterdayScore
 }: CategoryCardProps) {
   const router = useRouter()
   const cat = CATEGORIES[category]
-  const borderClass = CATEGORY_BORDER_MAP[category]
 
   const isPlayable = status === 'available' || status === 'trial'
   const isCompleted = status === 'solved' || status === 'failed'
@@ -76,70 +56,90 @@ export function CategoryCard({
       tabIndex={isPlayable ? 0 : undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      aria-label={
-        isPlayable
-          ? `Play ${cat.displayName}`
-          : `${cat.displayName} - ${isCompleted && score !== undefined ? `Score: ${score}` : status}`
-      }
+      aria-label={`${cat.displayName}: ${status}`}
+      style={{
+        borderLeftColor: cat.accentColor,
+        borderColor: isPlayable ? `${cat.accentColor}55` : '#1c2738',
+        background: isPlayable
+          ? `linear-gradient(90deg, ${cat.accentColor}12 0%, #0f1622 40%, #0f1622 100%)`
+          : '#0f1622',
+        boxShadow: isPlayable ? `0 0 14px ${cat.accentColor}14` : 'none'
+      }}
       className={[
-        'relative flex flex-col gap-2 rounded-xl border-2 bg-surface-panel p-4 transition-opacity',
-        borderClass,
-        STATUS_BORDER[status],
+        'w-full flex-1 min-h-13.5 max-h-24 flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl border border-l-4 transition-all duration-150',
         isPlayable
-          ? 'cursor-pointer hover:opacity-80 focus-visible:outline focus-visible:outline-offset-2'
-          : 'cursor-default',
-        isCompleted ? 'opacity-60' : '',
-        STATUS_PULSE[status] ? 'animate-pulse-subtle' : ''
+          ? 'cursor-pointer hover:border-opacity-100 hover:translate-x-1 active:scale-[0.99] focus-visible:outline-2'
+          : 'opacity-65 cursor-default'
       ].join(' ')}
     >
-      {/* Category identity */}
-      <div className="flex items-center gap-2">
-        <span className="text-xl leading-none" aria-hidden="true">
+      {/* Left: Cartridge Icon & Details */}
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Category Icon Badge with Animated Galaxy Border */}
+        <div
+          className={`frame-${category} w-9 h-9 min-[360px]:w-10 min-[360px]:h-10 [@media(min-height:780px)]:w-12 [@media(min-height:780px)]:h-12 rounded-lg flex items-center justify-center text-lg [@media(min-height:780px)]:text-xl shrink-0 select-none transition-all`}
+        >
           {cat.icon}
-        </span>
-        <span className="text-sm font-semibold tracking-widest text-text-primary">
-          {cat.displayName.toUpperCase()}
-        </span>
+        </div>
+
+        {/* Identity & Subtext with RPS League Tier Shaders */}
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-xs min-[360px]:text-sm font-black uppercase tracking-wider title-${category}`}
+            >
+              {cat.displayName}
+            </span>
+            {streakDays > 0 && (
+              <span className="text-[10px] font-mono font-bold text-[#F59E0B] flex items-center gap-0.5">
+                🔥{streakDays}d
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-medium text-text-muted truncate">
+            {cat.description}
+          </span>
+          {/* Telemetry specs: automatically surfaces on tall viewports to fill space */}
+          <span
+            className="inline-block truncate whitespace-nowrap text-[10px] font-mono tracking-tight mt-0.5"
+            style={{ color: `${cat.accentColor}99` }}
+          >
+            {cat.spec}
+          </span>
+        </div>
       </div>
 
-      {/* Description */}
-      <p className="text-xs text-text-muted">{cat.description}</p>
-
-      {/* Score display for completed categories */}
-      {isCompleted && score !== undefined && (
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-lg font-bold text-text-primary">
-            {score}
-          </span>
+      {/* Right: Action or Results */}
+      <div className="flex items-center gap-2 shrink-0">
+        {isCompleted && score !== undefined ? (
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end">
+              <span
+                className={`font-mono text-base font-black ${getScoreTierClass(score)}`}
+              >
+                {score}
+              </span>
+              <span className="text-[9px] font-bold text-text-muted uppercase">
+                {status === 'solved' ? '✓ PASS' : '✗ FAIL'}
+              </span>
+            </div>
+            {yesterdayScore !== undefined && (
+              <Link
+                href={`/review/${category}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] font-bold text-accent-recall underline underline-offset-2 px-1.5 py-1"
+              >
+                REV
+              </Link>
+            )}
+          </div>
+        ) : (
           <span
-            className={
-              status === 'solved' ? 'text-status-success' : 'text-status-fail'
-            }
-            aria-label={status === 'solved' ? 'Solved' : 'Failed'}
+            className={`btn-${category} px-3.5 py-1.5 [@media(min-height:780px)]:px-4 [@media(min-height:780px)]:py-2 rounded-md text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95`}
           >
-            {status === 'solved' ? '\u2713' : '\u2717'}
+            <span className={`title-${category}`}>{STATUS_LABEL[status]}</span>
           </span>
-        </div>
-      )}
-
-      {/* Streak */}
-      <StreakBadge days={streakDays} />
-
-      {/* Action badge */}
-      {isPlayable && (
-        <div className="mt-1">
-          <span
-            className="inline-block rounded border px-3 py-1 text-xs font-semibold tracking-wider"
-            style={{
-              backgroundColor: `${cat.accentColor}18`,
-              color: cat.accentColor,
-              borderColor: `${cat.accentColor}66`
-            }}
-          >
-            [ {STATUS_BADGE[status]} ]
-          </span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

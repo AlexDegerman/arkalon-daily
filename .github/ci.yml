@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXT_PUBLIC_APP_URL: https://daily.arkalon.fi
+          NEXT_PUBLIC_APP_URL: https://daily.rpsleague.fi
           # Dummy server-only vars so the build resolves imports without
           # real credentials - these are never used at build time
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy

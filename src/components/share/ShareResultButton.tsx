@@ -16,9 +16,11 @@ export function ShareResultButton({ result }: ShareResultButtonProps) {
   const [fallback, setFallback] = useState<'none' | 'download' | 'copied'>(
     'none'
   )
-  const cat = CATEGORIES[result.category]
+    const cat = CATEGORIES[result.category]
 
-  const shareText = `I scored ${result.score}/100 on today's ${cat.displayName} puzzle! ${result.streakDays > 0 ? `\uD83D\uDD25 ${result.streakDays}-day streak` : ''}`
+    const shareText = `I scored ${result.score}/100 on today's ${cat.displayName} puzzle! ${result.streakDays > 0 ? `\uD83D\uDD25 ${result.streakDays}-day streak` : ''}`
+
+    const shareFileName = `arkalon-daily-${result.category}-${result.score}.png`
 
   const handleShare = useCallback(async () => {
     if (sharing || !cardRef.current) return
@@ -43,7 +45,7 @@ export function ShareResultButton({ result }: ShareResultButtonProps) {
         return
       }
 
-      const file = new File([blob], 'arkalon-daily-result.png', {
+      const file = new File([blob], shareFileName, {
         type: 'image/png'
       })
 
@@ -59,7 +61,7 @@ export function ShareResultButton({ result }: ShareResultButtonProps) {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = 'arkalon-daily-result.png'
+        a.download = shareFileName
         a.click()
         URL.revokeObjectURL(url)
 

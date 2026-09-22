@@ -6,7 +6,6 @@ import pool from '@/lib/db'
 import { deriveDailySeed, getUtcDateString } from '@/lib/puzzles/hmac'
 import { generateWithValidation } from '@/lib/puzzles/validateChallenge'
 import { CATEGORY_ORDER } from '@/constants/categories'
-import type { PuzzleCategory } from '@/types/puzzle'
 import {
   FAMILY_REGISTRY,
   CATEGORY_FAMILY_MAP

@@ -1,10 +1,9 @@
 import 'server-only'
 
-import { seedToRng, nextInt, nextFloat } from '@/lib/puzzles/seededRandom'
+import { nextInt, nextFloat } from '@/lib/puzzles/seededRandom'
 import { STRIKE_BASE_CONFIGS } from '@/lib/puzzles/baseConfigs/strike'
 import {
   STRIKE_TRACK_WIDTH,
-  calcReticleX
 } from '@/lib/puzzles/compositionSystem'
 import { registerValidator } from '@/lib/puzzles/validateChallenge'
 import type {
@@ -13,6 +12,7 @@ import type {
   ResultMetricDefinition
 } from '@/types/puzzle'
 import type { MotionFunctionId } from '@/types/puzzle'
+import { seedToRng } from '../generateChallenge'
 
 export interface SniperShot {
   targetCenterX: number // logical px 0-600

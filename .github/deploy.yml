@@ -2,54 +2,56 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: daily-production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Copy files to VPS
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Deploy source code to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: '.,!node_modules,!.next,!.git'
-          target: /opt/arkalon/arkalon-daily/repo
-          strip_components: 0
+          source: '.,!node_modules,!.next,!.git,!.env*,!*.log,!.github,!.vscode'
+          target: /opt/arkalon/arkalon-daily/
+          overwrite: true
+          rm: false
 
-      - name: Deploy on VPS
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Build and restart on VPS
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             cd /opt/arkalon/arkalon-daily
+            export DEPLOY_SHA="${{ steps.sha.outputs.short }}"
 
-            # Tag current image for rollback
-            DEPLOY_SHA=${{ github.sha }}
-            echo "Deploying $DEPLOY_SHA"
+            echo "Building image for commit: ${DEPLOY_SHA}"
+            docker build -t "arkalon-daily:${DEPLOY_SHA}" -t "arkalon-daily:latest" .
 
-            # Build new image
-            docker build \
-              --tag arkalon-daily:$DEPLOY_SHA \
-              --tag arkalon-daily:latest \
-              repo/
+            echo "Restarting container with new image..."
+            DEPLOY_SHA="${DEPLOY_SHA}" docker compose up -d --force-recreate
 
-            # Bring up new container
-            docker compose up -d --remove-orphans
+            echo "Waiting 10s for healthcheck..."
+            sleep 10
 
-            # Prune old images (keep last 3)
-            docker images arkalon-daily --format '{{.Tag}}' \
-              | grep -v latest \
-              | sort -r \
-              | tail -n +4 \
-              | xargs -r -I {} docker rmi arkalon-daily:{} || true
+            docker exec arkalon-daily node -e "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-            echo "Deploy complete: $DEPLOY_SHA"
+            echo "Deployment of ${DEPLOY_SHA} complete and healthy!"

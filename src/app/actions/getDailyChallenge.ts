@@ -6,7 +6,6 @@ import { z } from 'zod'
 import pool from '@/lib/db'
 import { getUtcDateString } from '@/lib/puzzles/hmac'
 import { generateWithValidation } from '@/lib/puzzles/validateChallenge'
-import { ArkalonVisionFamily } from '@/lib/puzzles/families/arkalonVision'
 import type {
   PuzzleCategory,
   PuzzleSeedData,
@@ -27,6 +26,8 @@ export interface DailyChallengeResponse {
   alreadyPlayed?: boolean
   trialsCompleted?: string[]
   streakDays?: number
+  savedScore?: number
+  savedFamilyMetrics?: Record<string, unknown>
 }
 
 export async function getDailyChallenge(
@@ -52,13 +53,61 @@ export async function getDailyChallenge(
 
     // Check if already played today
     const todayUtc = getUtcDateString()
-    const existingResult = await client.query(
-      `SELECT normalized_score FROM daily_results
+    const existingResult = await client.query<{
+      normalized_score: number
+      family_specific_metrics: Record<string, unknown>
+    }>(
+      `SELECT normalized_score, family_specific_metrics
+        FROM daily_results
         WHERE player_id = $1 AND puzzle_date = $2 AND category = $3`,
       [playerId, todayUtc, category]
     )
     if (existingResult.rows.length > 0) {
-      return { success: true, alreadyPlayed: true }
+      const saved = existingResult.rows[0]
+      const puzzleRow = await client.query<{
+        puzzle_date: string
+        category: string
+        puzzle_family_id: string
+        family_index: number
+        seed: string
+      }>(
+        `SELECT puzzle_date::text, category, puzzle_family_id,
+          family_index, seed
+          FROM daily_puzzles
+          WHERE puzzle_date = $1 AND category = $2`,
+        [todayUtc, category]
+      )
+      const streakRow = await client.query<{ current_streak: number }>(
+        `SELECT current_streak FROM category_streaks
+          WHERE player_id = $1 AND category = $2`,
+        [playerId, category]
+      )
+      const puzzle = puzzleRow.rows[0]
+      // Regenerate the deterministic seed so share-card strips that need
+      // grid data (Depths) render identically to the original result
+      let savedSeedData: PuzzleSeedData | null = null
+      if (puzzle) {
+        const family = getFamily(puzzle.puzzle_family_id)
+        if (family) {
+          savedSeedData = generateWithValidation(puzzle.seed, family)
+        }
+      }
+      return {
+        success: true,
+        alreadyPlayed: true,
+        puzzleInfo: puzzle
+          ? {
+              puzzleDate: puzzle.puzzle_date,
+              category: puzzle.category as PuzzleCategory,
+              puzzleFamilyId: puzzle.puzzle_family_id,
+              familyIndex: puzzle.family_index
+            }
+          : undefined,
+        seedData: savedSeedData ?? undefined,
+        streakDays: streakRow.rows[0]?.current_streak ?? 0,
+        savedScore: saved.normalized_score,
+        savedFamilyMetrics: saved.family_specific_metrics
+      }
     }
 
     // Load today's daily_puzzles row

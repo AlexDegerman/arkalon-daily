@@ -31,12 +31,16 @@ const NAV_ITEMS: NavItem[] = [
     icon: <User size={20} aria-hidden="true" />
   }
 ]
+interface BottomNavProps {
+  // Result screens live on /category paths but are not active gameplay;
+  // they need the nav because the top bar's only exit is the wordmark.
+  forceVisible?: boolean
+}
 
-export function BottomNav() {
+export function BottomNav({ forceVisible = false }: BottomNavProps) {
   const activeView = useActiveView()
-
   // Do not render bottom nav during active gameplay
-  if (activeView === 'game') return null
+  if (activeView === 'game' && !forceVisible) return null
 
   return (
     <nav

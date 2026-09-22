@@ -20,8 +20,10 @@ import { usePuzzleStore } from '@/app/stores/puzzleStore'
 import { useUiStore } from '@/app/stores/uiStore'
 import { speakArkalon } from '@/lib/arkalonTTS'
 import { useSound } from '@/hooks/useSound'
-import { getScoreTierClass } from '@/lib/format'
-import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
+import type { SoundKey } from '@/hooks/useSound'
+import { getScoreTierClass, getScoreRarity } from '@/lib/format'
+import { CATEGORIES } from '@/constants/categories'
+import { getCategoryStatuses } from '@/app/actions/getCategoryStatuses'
 import { FAMILY_META } from '@/constants/familyMeta'
 import type { ArkalonVisionData } from '@/lib/puzzles/families/arkalonVision'
 import type { SurgeFrenzyData } from '@/lib/puzzles/families/surgeFrenzy'
@@ -39,6 +41,10 @@ import type {
   DailyPuzzleInfo,
   PuzzleSeedData
 } from '@/types/puzzle'
+import { TTS_LINES, getResultTTSLine } from '@/lib/ttsLines'
+import { useTabGuard } from '@/hooks/useTabGuard'
+import { useMusicStore } from '@/app/stores/musicStore'
+import { buildDisplayMetrics } from '@/lib/displayMetrics'
 
 type SurfacePhase =
   | 'loading'
@@ -46,26 +52,10 @@ type SurfacePhase =
   | 'playing'
   | 'submitting'
   | 'result'
-  | 'already-played'
   | 'error'
 
 interface CategorySurfaceProps {
   category: PuzzleCategory
-}
-
-// Dummy statuses used for the continuation panel until we have live data in Commit 6.2
-function buildPlaceholderStatuses(
-  currentCategory: PuzzleCategory,
-  currentStatus: 'solved' | 'failed',
-  currentScore: number
-): CategoryStatus[] {
-  return CATEGORY_ORDER.map((slug) => ({
-    category: slug,
-    status: slug === currentCategory ? currentStatus : 'available',
-    score: slug === currentCategory ? currentScore : undefined,
-    streakDays: 0,
-    trialCompleted: true
-  }))
 }
 
 export function CategorySurface({ category }: CategorySurfaceProps) {
@@ -73,6 +63,11 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const { play } = useSound()
   const arkalonTTSEnabled = useUiStore((s) => s.arkalonTTSEnabled)
   const arkalonVolume = useUiStore((s) => s.arkalonVolume)
+  const requestPause = usePuzzleStore((s) => s.requestPause)
+  const handleDuplicateTab = useCallback(() => {
+    requestPause()
+  }, [requestPause])
+  useTabGuard(handleDuplicateTab)
 
   const [phase, setPhase] = useState<SurfacePhase>('loading')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -80,18 +75,11 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [puzzleInfo, setPuzzleInfo] = useState<DailyPuzzleInfo | null>(null)
   const [seedData, setSeedData] = useState<PuzzleSeedData | null>(null)
   const [resultScore, setResultScore] = useState<number>(0)
-  const [resultStatus, setResultStatus] = useState<'solved' | 'failed'>(
-    'solved'
-  )
-  const [resultElapsedMs, setResultElapsedMs] = useState<number>(0)
   const [resultMetrics, setResultMetrics] = useState<Record<string, unknown>>(
     {}
   )
   const [streakDays, setStreakDays] = useState<number>(0)
-  const [trialsCompleted, setTrialsCompleted] = useState<string[]>([])
-  const [rawMetrics, setRawMetrics] = useState<
-    Parameters<typeof submitResult>[0]['familyMetrics'] | null
-  >(null)
+  const [allStatuses, setAllStatuses] = useState<CategoryStatus[] | null>(null)
   const [pendingMilestone, setPendingMilestone] = useState<number | null>(null)
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false)
   const [recoveryTutorialShown, setRecoveryTutorialShown] = useState(true)
@@ -134,14 +122,6 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         setPhase('error')
         return
       }
-
-      if (res.alreadyPlayed) {
-        setPhase('already-played')
-        return
-      }
-
-      setTrialsCompleted(res.trialsCompleted ?? [])
-      setStreakDays(res.streakDays ?? 0)
       // Load display name for share card
       try {
         const storedName = localStorage.getItem('arkalon_daily_display_name')
@@ -149,6 +129,28 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       } catch {
         // localStorage unavailable
       }
+      if (res.alreadyPlayed) {
+        // Rebuild today's result screen from the stored attempt
+        setPuzzleInfo(res.puzzleInfo ?? null)
+        setSeedData(res.seedData ?? null)
+        setStreakDays(res.streakDays ?? 0)
+        setResultScore(res.savedScore ?? 0)
+        setResultMetrics(
+          buildDisplayMetrics(
+            category,
+            res.savedFamilyMetrics ?? {},
+            res.seedData?.familyData
+          )
+        )
+        getCategoryStatuses(playerId).then((statusesRes) => {
+          if (statusesRes.success && statusesRes.statuses) {
+            setAllStatuses(statusesRes.statuses)
+          }
+        })
+        setPhase('result')
+        return
+      }
+      setStreakDays(res.streakDays ?? 0)
       setPuzzleInfo(res.puzzleInfo!)
       setSeedData(res.seedData!)
 
@@ -158,15 +160,40 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         getTrialChallenge(playerId, category).then((trialRes) => {
           if (trialRes.success && trialRes.seedData) {
             setSeedData(trialRes.seedData)
+            setPhase('trial-explainer')
+          } else {
+            setErrorMsg(trialRes.error ?? 'Failed to load trial challenge')
+            setPhase('error')
           }
-          setPhase('trial-explainer')
         })
       } else {
+        if (arkalonTTSEnabled) {
+          speakArkalon(TTS_LINES.categoryEntry[category], arkalonVolume)
+        }
         setPhase('playing')
         setIsTrial(false)
       }
     })
-  }, [category, router])
+  }, [category, router, arkalonTTSEnabled, arkalonVolume])
+
+    useEffect(() => {
+      const setContext = useMusicStore.getState().setContext
+      if (phase === 'playing' || phase === 'trial-explainer') {
+        setContext(category)
+      } else if (
+        phase === 'result' ||
+        phase === 'loading' ||
+        phase === 'submitting'
+      ) {
+        setContext('menu')
+      }
+    }, [phase, category])
+    // Abandoning a puzzle mid-play must not leave puzzle music running
+    useEffect(() => {
+      return () => {
+        useMusicStore.getState().setContext('menu')
+      }
+    }, [])
 
   const handleTrialBegin = useCallback(() => {
     setIsTrial(true)
@@ -189,16 +216,11 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       previewScore?: number
     ) => {
       if (!puzzleInfo || !playerIdRef.current) return
-
-      setResultElapsedMs(metrics.totalElapsedMs)
-
       if (isTrial) {
         const pid = playerIdRef.current
         await completeTrial(pid, category)
-        setTrialsCompleted((prev) => [...prev, category])
         const ps = previewScore ?? 50
         setResultScore(ps)
-        setResultStatus(ps >= 15 ? 'solved' : 'failed')
         setResultMetrics({ ...displayMetrics, isTrial: true })
         setPhase('result')
         return
@@ -222,20 +244,28 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       }
 
       const score = res.normalizedScore ?? 0
-      const status = res.status ?? 'failed'
-
-      if (score >= 90) play('result-legendary')
-      else if (score >= 70) play('result-epic')
-      else if (score >= 50) play('result-rare')
-      else play('result-common')
+      // Result sting matches the rarity frame/aura on the result screen
+      play(`result-${getScoreRarity(score)}` as SoundKey)
 
       if (arkalonTTSEnabled) {
         speakArkalon(getResultTTSLine(score), arkalonVolume)
       }
 
       setResultScore(score)
-      setResultStatus(status)
       setStreakDays(res.currentStreak ?? 0)
+      setResultMetrics(displayMetrics)
+      const statusesRes = await getCategoryStatuses(pid)
+      if (statusesRes.success && statusesRes.statuses) {
+        setAllStatuses(statusesRes.statuses)
+        if (
+          arkalonTTSEnabled &&
+          statusesRes.statuses.every(
+            (s) => s.status === 'solved' || s.status === 'failed'
+          )
+        ) {
+          speakArkalon(TTS_LINES.allComplete, arkalonVolume)
+        }
+      }
       setResultMetrics(displayMetrics)
 
       // Surface milestone overlay if a new milestone was reached
@@ -253,11 +283,12 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   )
 
   // Per-family completion handlers
-
   const handleRecallComplete = useCallback(
     (result: ArkalonVisionResult) => {
-      const total = result.rounds.reduce((s, r) => s + r.sequenceLength, 0)
-      const correct = result.rounds.reduce((s, r) => s + r.correctGlyphs, 0)
+      const raw = {
+        rounds: result.rounds,
+        totalElapsedMs: result.totalElapsedMs
+      }
       const preview = Math.max(
         0,
         Math.round(
@@ -273,22 +304,12 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           rounds: result.rounds,
           totalElapsedMs: result.totalElapsedMs
         },
-        {
-          accuracyPercent:
-            total > 0 ? Math.round((correct / total) * 100) : 0,
-          maxSequence: Math.max(
-            ...result.rounds.map((r) => r.sequenceLength)
-          ),
-          errors: result.rounds.reduce((s, r) => s + r.errors, 0),
-          completionTimeMs: result.totalElapsedMs,
-          rounds: result.rounds
-        },
+        buildDisplayMetrics('recall', raw),
         preview
       )
     },
     [handleSubmit]
   )
-
   const handleSurgeComplete = useCallback(
     (result: SurgeFrenzyResult) => {
       handleSubmit(
@@ -298,13 +319,11 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           expectedNodeCount: result.expectedNodeCount,
           totalElapsedMs: result.totalElapsedMs
         },
-        {
-          avgReactionMs: result.avgReactionMs,
-          correctTaps: result.correctTaps,
-          misses: result.misses,
-          bestCombo: result.bestCombo,
-          nodes: result.nodes
-        },
+        buildDisplayMetrics('surge', {
+          nodes: result.nodes,
+          expectedNodeCount: result.expectedNodeCount,
+          totalElapsedMs: result.totalElapsedMs
+        }),
         Math.round(
           (result.correctTaps / Math.max(1, result.expectedNodeCount)) * 100
         )
@@ -312,7 +331,6 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     },
     [handleSubmit]
   )
-
   const handleStrikeComplete = useCallback(
     (result: SniperChallengeResult) => {
       handleSubmit(
@@ -321,20 +339,15 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           shots: result.shots,
           totalElapsedMs: result.totalElapsedMs
         },
-        {
-          perfectHits: result.perfectHits,
-          excellentHits: result.excellentHits,
-          accuracyPct: result.accuracyPct,
-          avgDeviation: result.avgDeviation,
-          totalShots: result.totalShots,
-          shots: result.shots
-        },
+        buildDisplayMetrics('strike', {
+          shots: result.shots,
+          totalElapsedMs: result.totalElapsedMs
+        }),
         result.accuracyPct
       )
     },
     [handleSubmit]
   )
-
   const handleCipherComplete = useCallback(
     (result: WildPredictionResult) => {
       handleSubmit(
@@ -343,45 +356,23 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           correctRounds: result.correctRounds,
           totalRounds: result.totalRounds,
           totalIncorrectGuesses: result.totalIncorrectGuesses,
+          avgResponseMs: result.avgResponseMs,
           totalElapsedMs: result.totalElapsedMs
         },
-        {
-          correctPct: Math.round(
-            (result.correctRounds / result.totalRounds) * 100
-          ),
-          roundsCompleted: result.roundsCompleted,
-          avgResponseMs: result.avgResponseMs,
-          totalErrors: result.totalIncorrectGuesses,
+        buildDisplayMetrics('cipher', {
           correctRounds: result.correctRounds,
-          totalRounds: result.totalRounds
-        },
+          totalRounds: result.totalRounds,
+          totalIncorrectGuesses: result.totalIncorrectGuesses,
+          avgResponseMs: result.avgResponseMs,
+          totalElapsedMs: result.totalElapsedMs
+        }),
         Math.round((result.correctRounds / result.totalRounds) * 80)
       )
     },
     [handleSubmit]
   )
-
   const handleDepthsComplete = useCallback(
     (result: CrystalMineResult) => {
-      // Collect found deposit positions from the seed data for the share card
-      const gridData = seedData?.familyData as Record<string, unknown> | null
-      const grid = (gridData?.grid ?? []) as Array<
-        Array<{
-          row: number
-          col: number
-          isDeposit: boolean
-          isRevealed: boolean
-        }>
-      >
-      const foundPositions: { row: number; col: number }[] = []
-      for (const row of grid) {
-        for (const cell of row) {
-          if (cell.isDeposit && cell.isRevealed) {
-            foundPositions.push({ row: cell.row, col: cell.col })
-          }
-        }
-      }
-
       handleSubmit(
         {
           family: 'crystal_mine',
@@ -391,14 +382,17 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           chargeLimit: result.chargeLimit,
           totalElapsedMs: result.totalElapsedMs
         },
-        {
-          depositsFound: result.depositsFound,
-          chargesUsed: result.chargesUsed,
-          efficiencyPct: result.efficiencyPct,
-          completionTimeMs: result.totalElapsedMs,
-          gridSize: (gridData?.gridSize as number) ?? 5,
-          foundPositions
-        },
+        buildDisplayMetrics(
+          'depths',
+          {
+            depositsFound: result.depositsFound,
+            totalDeposits: result.totalDeposits,
+            chargesUsed: result.chargesUsed,
+            chargeLimit: result.chargeLimit,
+            totalElapsedMs: result.totalElapsedMs
+          },
+          seedData?.familyData
+        ),
         Math.round((result.depositsFound / result.totalDeposits) * 80)
       )
     },
@@ -439,25 +433,6 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     )
   }
 
-  if (phase === 'already-played') {
-    return (
-      <div className="flex min-h-dvh flex-col">
-        <GameHeader category={category} />
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
-          <p className="text-sm text-text-muted">
-            You&apos;ve already played {cat.displayName} today.
-          </p>
-          <button
-            onClick={() => router.push('/')}
-            className="rounded-lg border border-border-subtle px-6 py-3 text-xs font-semibold text-text-muted transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-accent-recall"
-          >
-            Return Home
-          </button>
-        </main>
-      </div>
-    )
-  }
-
   if (phase === 'trial-explainer') {
     return (
       <>
@@ -473,15 +448,9 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
   if (phase === 'result') {
     const familyMeta = FAMILY_META[category]
-    const allStatuses = buildPlaceholderStatuses(
-      category,
-      resultStatus,
-      resultScore
-    )
-
     return (
       <div className="flex min-h-dvh flex-col">
-        <GameHeader category={category} />
+        <GameHeader />
         <main className="flex-1 overflow-y-auto">
           {isTrial && resultMetrics.isTrial ? (
             // Trial result screen
@@ -495,11 +464,17 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
                 {resultScore}
               </div>
               <p className="text-sm text-text-muted">
-                Preview score &mdash; not recorded
+                Preview score &middot; not recorded
               </p>
               <button
                 onClick={() => {
                   setIsTrial(false)
+                  if (arkalonTTSEnabled) {
+                    speakArkalon(
+                      TTS_LINES.categoryEntry[category],
+                      arkalonVolume
+                    )
+                  }
                   setPhase('playing')
                   // Reload fresh seed data for the real attempt
                   const pid = playerIdRef.current
@@ -528,19 +503,16 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
             <ResultScreen
               category={category}
               playerName={playerName}
-              familyName={familyMeta.displayName}
               familyIndex={puzzleInfo?.familyIndex ?? 0}
               score={resultScore}
-              status={resultStatus}
-              elapsedMs={resultElapsedMs}
               metricDefinitions={familyMeta.resultMetrics}
               metricValues={resultMetrics}
               streakDays={streakDays}
-              allStatuses={allStatuses}
+              allStatuses={allStatuses ?? []}
             />
           )}
         </main>
-        <BottomNav />
+        <BottomNav forceVisible />
         {pendingMilestone !== null && phase === 'result' && (
           <StreakMilestoneOverlay
             category={category}
@@ -565,8 +537,6 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       </div>
     )
   }
-
-  const activeFamilyMeta = FAMILY_META[category]
 
   function renderPuzzle() {
     if (!seedData) return null
@@ -616,11 +586,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <GameHeader
-        category={category}
-        familyName={activeFamilyMeta.displayName}
-        familyIndex={puzzleInfo?.familyIndex}
-      />
+      <GameHeader category={category} familyIndex={puzzleInfo?.familyIndex} />
       <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-4 py-4">
         {renderPuzzle()}
       </main>

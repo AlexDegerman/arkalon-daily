@@ -83,15 +83,28 @@ export function CategoryStatsPanel({ stats }: CategoryStatsPanelProps) {
         {activeStats ? (
           <>
             <StatRow label="Best Score" value={activeStats.bestScore} />
-            <StatRow label="Average Score" value={activeStats.averageScore} />
+            <StatRow
+              label="Average Score"
+              value={
+                activeStats.daysPlayed >= 3 ? activeStats.averageScore : '—'
+              }
+            />
             <StatRow label="Days Played" value={activeStats.daysPlayed} />
             <StatRow
               label="Current Streak"
-              value={`${activeStats.currentStreak} days`}
+              value={
+                activeStats.currentStreak === 1
+                  ? '1 day'
+                  : `${activeStats.currentStreak} days`
+              }
             />
             <StatRow
               label="Longest Streak"
-              value={`${activeStats.longestStreak} days`}
+              value={
+                activeStats.longestStreak === 1
+                  ? '1 day'
+                  : `${activeStats.longestStreak} days`
+              }
             />
             {activeStats.globalPercentile !== null && (
               <StatRow

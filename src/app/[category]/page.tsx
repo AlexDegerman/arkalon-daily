@@ -4,20 +4,19 @@ import type { PuzzleCategory } from '@/types/puzzle'
 import { CategorySurface } from '@/components/puzzles/CategorySurface'
 
 interface CategoryPageProps {
-  params: { category: string }
+  params: Promise<{ category: string }>
 }
 
 export function generateStaticParams() {
   return CATEGORY_ORDER.map((slug) => ({ category: slug }))
 }
 
-export default function CategoryPage({ params }: CategoryPageProps) {
-  const slug = params.category as PuzzleCategory
-
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { category } = await params
+  const slug = category as PuzzleCategory
   if (!CATEGORY_ORDER.includes(slug)) {
     notFound()
   }
-
   // CategorySurface is a client component that handles player ID retrieval,
   // challenge loading, trial flow, puzzle rendering, and result submission.
   return <CategorySurface category={slug} />

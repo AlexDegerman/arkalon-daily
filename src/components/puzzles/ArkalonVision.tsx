@@ -5,9 +5,6 @@ import { GlyphSequenceDisplay } from './GlyphSequenceDisplay'
 import { GlyphKeypad } from './GlyphKeypad'
 import { TrialBanner } from '@/components/trial/TrialBanner'
 import { useSound } from '@/hooks/useSound'
-import { useUiStore } from '@/app/stores/uiStore'
-import { speakArkalon } from '@/lib/arkalonTTS'
-import { CATEGORIES } from '@/constants/categories'
 import type {
   ArkalonVisionData,
   ArkalonVisionRound
@@ -39,16 +36,12 @@ interface ArkalonVisionProps {
   onComplete: (result: ArkalonVisionResult) => void
 }
 
-const CATEGORY = 'recall' as const
-
 export function ArkalonVision({
   data,
   isTrial,
   onComplete
 }: ArkalonVisionProps) {
   const { play } = useSound()
-  const arkalonTTSEnabled = useUiStore((s) => s.arkalonTTSEnabled)
-  const arkalonVolume = useUiStore((s) => s.arkalonVolume)
 
   const [roundState, setRoundState] = useState<RoundState>({
     roundIndex: 0,
@@ -63,13 +56,6 @@ export function ArkalonVision({
 
   const currentRound: ArkalonVisionRound | undefined =
     data.rounds[roundState.roundIndex]
-
-  // TTS on mount
-  useEffect(() => {
-    if (arkalonTTSEnabled) {
-      speakArkalon(CATEGORIES[CATEGORY].arkalonLine, arkalonVolume)
-    }
-  }, [arkalonTTSEnabled, arkalonVolume])
 
   // Persist turn-based state to localStorage on each meaningful change
   useEffect(() => {
@@ -87,6 +73,12 @@ export function ArkalonVision({
       // localStorage unavailable - silently ignore
     }
   }, [roundState.roundIndex, roundState.phase, isTrial])
+
+  useEffect(() => {
+    if (roundState.phase === 'display' && currentRound) {
+      play('sequence-tick')
+    }
+  }, [roundState.phase, currentRound, play])
 
   const handleDisplayComplete = useCallback(() => {
     setRoundState((prev) => ({
@@ -207,6 +199,7 @@ export function ArkalonVision({
             sequence={currentRound.sequence}
             displayDurationMs={currentRound.displayDurationMs}
             onComplete={handleDisplayComplete}
+            onTick={() => play('sequence-tick')}
           />
         )}
 

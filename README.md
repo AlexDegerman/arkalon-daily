@@ -70,7 +70,7 @@ For more detail: [Share System](docs/share-cards.md)
 
 | Layer | Choice |
 |---|---|
-| Framework | Next.js 14 App Router |
+| Framework | Next.js 16 App Router |
 | Styling | Tailwind CSS v4 (CSS-first, no config file) |
 | State | Zustand 5 (`puzzleStore`, `uiStore`, `musicStore`) |
 | Database | PostgreSQL 17 via `pg.Pool` in Server Actions |

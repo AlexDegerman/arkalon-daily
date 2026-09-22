@@ -2,7 +2,6 @@ import 'server-only'
 
 import {
   nextInt,
-  nextFloat,
   pickOne,
   shuffle
 } from '@/lib/puzzles/seededRandom'

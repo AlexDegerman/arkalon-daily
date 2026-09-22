@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { TrialBanner } from '@/components/trial/TrialBanner'
 import { PauseOverlay } from '@/components/layout/PauseOverlay'
 import { useSound } from '@/hooks/useSound'
+import { usePuzzleStore } from '@/app/stores/puzzleStore'
 import { calcReticleX } from '@/lib/puzzles/compositionSystem'
 import type {
   SniperChallengeData,
@@ -78,16 +79,16 @@ function calcDeceptiveX(
     // Brief reverse
     const dt = tInPass - deceptEnd
     const deceptPos = targetCenterX - 60 + v * 0.3 * (deceptEnd - deceptStart)
-    return deceptPos - v * 0.5 * dt
+    return deceptPos - v * 0.25 * dt
   } else {
-    // Accelerate through at 1.5x
+    // Accelerate through at 1.2x
     const dt = tInPass - reverseEnd
     const reversePos =
       targetCenterX -
       60 +
       v * 0.3 * (deceptEnd - deceptStart) -
-      v * 0.5 * (reverseEnd - deceptEnd)
-    return Math.min(600, reversePos + v * 1.5 * dt)
+      v * 0.25 * (reverseEnd - deceptEnd)
+    return Math.min(600, reversePos + v * 1.2 * dt)
   }
 }
 
@@ -105,6 +106,7 @@ export function SniperChallenge({
   onComplete
 }: SniperChallengeProps) {
   const { play } = useSound()
+  const pauseSignal = usePuzzleStore((s) => s.pauseSignal)
   const trackRef = useRef<HTMLDivElement>(null)
   const [trackWidth, setTrackWidth] = useState(TRACK_LOGICAL_WIDTH)
 
@@ -136,13 +138,17 @@ export function SniperChallenge({
 
   const currentShot: SniperShot | undefined = data.shots[shotIndex]
 
+  useEffect(() => {
+    if (pauseSignal > 0) setIsPaused(true)
+  }, [pauseSignal])
   // Pause on tab hidden
   useEffect(() => {
     function onVisibility() {
       if (document.hidden && !finishedRef.current) setIsPaused(true)
     }
     document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
+    return () =>
+      document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
   // Escape to pause
@@ -233,9 +239,13 @@ export function SniperChallenge({
       const grade = getGrade(deviationPx, currentShot.targetWindowPx)
 
       if (!autoMiss) {
-        if (grade === 'perfect') play('perfect-shot')
-        else if (grade === 'miss') play('incorrect')
-        else play('correct')
+        if (grade === 'perfect') {
+          play('shot-perfect')
+        } else if (grade === 'miss') {
+          play('incorrect')
+        } else {
+          play('shot-basic') 
+        }
       }
 
       resultsRef.current.push({
@@ -368,9 +378,16 @@ export function SniperChallenge({
         <PauseOverlay isPaused={isPaused} onResume={() => setIsPaused(false)} />
       </div>
 
-      <p className="text-center text-xs text-text-muted">
-        Space or Enter to fire &mdash; Escape to pause
-      </p>
+      <div className="flex items-center justify-between text-xs text-text-muted">
+        <span>Space or Enter to fire &middot; Escape to pause</span>
+        <button
+          onClick={() => setIsPaused(true)}
+          aria-label="Pause game"
+          className="rounded px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-accent-recall"
+        >
+          {'\u23F8'} Pause
+        </button>
+      </div>
     </div>
   )
 }

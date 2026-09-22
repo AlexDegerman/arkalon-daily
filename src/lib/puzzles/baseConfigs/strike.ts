@@ -103,16 +103,16 @@ export const STRIKE_BASE_CONFIGS: StrikeBaseConfig[] = [
     timingWindowMs: 130
   },
   {
-    targetWindowPx: 20,
+    targetWindowPx: 40,
     shotCount: 28,
-    movementSpeed: 2.4,
+    movementSpeed: 2.2,
     motionFunction: 'deceptive',
     timingWindowMs: 100
   },
   {
-    targetWindowPx: 18,
+    targetWindowPx: 38,
     shotCount: 30,
-    movementSpeed: 2.6,
+    movementSpeed: 2.2,
     motionFunction: 'deceptive',
     timingWindowMs: 90
   }

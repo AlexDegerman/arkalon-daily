@@ -22,7 +22,7 @@ const EXPLAINER_SCREENS: Record<PuzzleCategory, ExplainerScreen[]> = {
       text: 'Tap the glowing nodes before they vanish. Avoid red decoy nodes.'
     },
     {
-      text: 'Speed and accuracy both count. The pace increases over 90 seconds.'
+      text: 'Speed and accuracy both count. The pace increases over 60 seconds.'
     }
   ],
   cipher: [
@@ -40,9 +40,12 @@ const EXPLAINER_SCREENS: Record<PuzzleCategory, ExplainerScreen[]> = {
   depths: [
     { text: 'Hidden crystals are buried in the grid.' },
     {
-      text: 'Number tiles show distance to the nearest crystal. Use them to deduce locations.'
+      text: 'Clue tiles hint at the nearest crystal - numbers, arrows, heat or counts. Use them to deduce locations.'
     },
-    { text: 'You have limited charges \u2014 excavate wisely.' }
+    {
+      text: 'Right-click or press and hold a tile to mark it as a suspected crystal without spending a charge.'
+    },
+    { text: 'You have limited charges \u00b7 excavate wisely.' }
   ]
 }
 

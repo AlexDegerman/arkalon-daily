@@ -19,6 +19,9 @@ export async function getCategoryStatuses(
   }
 
   const todayUtc = getUtcDateString()
+  const yesterdayUtc = new Date(Date.now() - 86400000)
+    .toISOString()
+    .slice(0, 10)
   const client = await pool.connect()
 
   try {
@@ -45,6 +48,20 @@ export async function getCategoryStatuses(
       resultsRow.rows.map((r) => [r.category, r])
     )
 
+    // Yesterday's results for this player
+    const yesterdayRow = await client.query<{
+      category: string
+      normalized_score: number
+    }>(
+      `SELECT category, normalized_score
+        FROM daily_results
+        WHERE player_id = $1 AND puzzle_date = $2`,
+      [playerId, yesterdayUtc]
+    )
+    const yesterdayMap = Object.fromEntries(
+      yesterdayRow.rows.map((r) => [r.category, r.normalized_score])
+    )
+
     // Streaks
     const streakRows = await client.query<{
       category: string
@@ -64,22 +81,25 @@ export async function getCategoryStatuses(
       const trialCompleted = trialsCompleted.includes(slug)
       const streakDays = (streakMap[slug] as number) ?? 0
 
-      if (result) {
-        return {
-          category: slug as PuzzleCategory,
-          status: result.status === 'solved' ? 'solved' : 'failed',
-          score: result.normalized_score,
-          streakDays,
-          trialCompleted
-        }
-      }
+          const yesterdayScore = yesterdayMap[slug] as number | undefined
 
+    if (result) {
       return {
         category: slug as PuzzleCategory,
-        status: trialCompleted ? 'available' : 'trial',
+        status: result.status === 'solved' ? 'solved' : 'failed',
+        score: result.normalized_score,
         streakDays,
-        trialCompleted
+        trialCompleted,
+        yesterdayScore
       }
+    }
+    return {
+      category: slug as PuzzleCategory,
+      status: trialCompleted ? 'available' : 'trial',
+      streakDays,
+      trialCompleted,
+      yesterdayScore
+    }
     })
 
     return { success: true, statuses }

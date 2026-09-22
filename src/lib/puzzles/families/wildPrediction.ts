@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { seedToRng, nextInt } from '@/lib/puzzles/seededRandom'
+import { nextInt } from '@/lib/puzzles/seededRandom'
 import { CIPHER_BASE_CONFIGS } from '@/lib/puzzles/baseConfigs/cipher'
 import { generateRound } from '@/lib/puzzles/patternGenerators'
 import { registerValidator } from '@/lib/puzzles/validateChallenge'
@@ -10,6 +10,7 @@ import type {
   ResultMetricDefinition
 } from '@/types/puzzle'
 import type { CipherRound } from '@/lib/puzzles/patternGenerators'
+import { seedToRng } from '../generateChallenge'
 
 export interface WildPredictionData {
   rounds: CipherRound[]

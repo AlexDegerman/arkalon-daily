@@ -1,10 +1,16 @@
 export const SCORE_TIER_THRESHOLDS: { min: number; cls: string }[] = [
-  { min: 96, cls: 'g-vg' },
-  { min: 90, cls: 'g-spd' },
-  { min: 80, cls: 'g-td' },
-  { min: 70, cls: 'g-ud' },
-  { min: 50, cls: 'g-b1' },
-  { min: 0, cls: 'g-m1' }
+  { min: 100, cls: 'g-tqgs' },
+  { min: 96, cls: 'g-ttr' },
+  { min: 90, cls: 'g-dqgs' },
+  { min: 85, cls: 'g-sxqg' },
+  { min: 80, cls: 'g-str' },
+  { min: 70, cls: 'g-qntr' },
+  { min: 60, cls: 'g-nvg' },
+  { min: 50, cls: 'g-tqg' },
+  { min: 40, cls: 'g-dvg' },
+  { min: 30, cls: 'g-ntg' },
+  { min: 15, cls: 'g-qnqg' },
+  { min: 0, cls: 'g-vg' }
 ]
 
 // Rarity tier mapping for result frame borders and streak badge styling
@@ -15,10 +21,3 @@ export const RARITY_SCORE_THRESHOLDS: { min: number; rarity: string }[] = [
   { min: 50, rarity: 'rare' },
   { min: 0, rarity: 'common' }
 ]
-
-export const STREAK_RARITY_MAP: Record<number, string> = {
-  7: 'rare',
-  30: 'legendary',
-  100: 'mythical',
-  365: 'rainbow'
-}

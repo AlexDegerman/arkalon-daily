@@ -1,50 +1,70 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+
 interface RecoveryTutorialOverlayProps {
-  recoveryCode: string
   onDismiss: () => void
 }
 
-// Shown exactly once on first profile page visit.
-// Explains the recovery code and why it should be saved.
 export function RecoveryTutorialOverlay({
-  recoveryCode,
   onDismiss
 }: RecoveryTutorialOverlayProps) {
+  const [returnUrl, setReturnUrl] = useState(
+    'https://daily.rpsleague.fi/profile'
+  )
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setReturnUrl(`${window.location.origin}/profile`)
+    }
+  }, [])
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="recovery-tutorial-title"
     >
-      <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface-panel p-6">
+      <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface-panel p-6 text-center shadow-2xl">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent-recall/10 text-2xl">
+          🛡️
+        </div>
+
         <h2
           id="recovery-tutorial-title"
           className="mb-2 text-base font-semibold tracking-wider text-text-primary"
         >
-          Save Your Recovery Code
+          Protect Your Streaks
         </h2>
-        <p className="mb-4 text-sm text-text-muted">
-          Arkalon Daily doesn&apos;t use passwords. Your recovery code is the
-          only way to restore your streaks and stats on a new device.
+
+        <p className="mb-3 text-xs text-text-muted leading-relaxed">
+          Arkalon Daily doesn&apos;t use passwords. Your profile, stats, and
+          streaks are secured by your{' '}
+          <strong>Arkalon Core Recovery Code</strong> on the Network Hub.
         </p>
-        <div className="mb-4 rounded-lg bg-bg-base px-4 py-3">
-          <code className="font-mono text-sm font-semibold tracking-widest text-text-primary">
-            {recoveryCode}
-          </code>
+
+        <p className="mb-5 text-xs text-text-muted leading-relaxed">
+          Save your recovery code so you can restore your account on any device
+          if your browser data is ever cleared.
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <a
+            href={`https://network.rpsleague.fi/settings?tab=identity&returnTo=${encodeURIComponent(returnUrl)}`}
+            onClick={onDismiss}
+            className="w-full rounded-lg bg-accent-recall px-4 py-3 text-xs font-bold tracking-wider text-bg-base transition-opacity hover:opacity-90"
+          >
+            VIEW RECOVERY CODE ON HUB &rarr;
+          </a>
+          <button
+            onClick={onDismiss}
+            autoFocus
+            className="w-full rounded-lg border border-border-subtle px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-primary transition-colors"
+          >
+            I ALREADY SAVED IT
+          </button>
         </div>
-        <p className="mb-5 text-xs text-text-muted">
-          Write it down or screenshot this screen. You can find it again in your
-          profile at any time.
-        </p>
-        <button
-          onClick={onDismiss}
-          autoFocus
-          className="w-full rounded-lg border border-accent-recall px-4 py-3 text-sm font-semibold tracking-wider text-accent-recall transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-accent-recall"
-        >
-          GOT IT
-        </button>
       </div>
     </div>
   )

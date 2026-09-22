@@ -7,10 +7,7 @@ import pool from '@/lib/db'
 import type { PlayerProfile, CategoryStats } from '@/types/puzzle'
 import type { PuzzleCategory } from '@/types/puzzle'
 import { CATEGORY_ORDER } from '@/constants/categories'
-
-const Schema = z.object({
-  playerId: z.string().uuid()
-})
+import { getOrCreateDailyPlayer } from './getOrCreateDailyPlayer'
 
 export interface GetPlayerProfileResult {
   success: boolean
@@ -20,30 +17,48 @@ export interface GetPlayerProfileResult {
 }
 
 export async function getPlayerProfile(
-  playerId: string
+  playerId?: string | null
 ): Promise<GetPlayerProfileResult> {
-  const parsed = Schema.safeParse({ playerId })
-  if (!parsed.success) {
-    return { success: false, error: 'Invalid player ID' }
+  let activePlayerId: string
+
+  // If playerId is missing or not a valid UUID, resolve via getOrCreateDailyPlayer
+  if (!playerId || !z.string().uuid().safeParse(playerId).success) {
+    const dailyPlayer = await getOrCreateDailyPlayer()
+    activePlayerId = dailyPlayer.coreId
+  } else {
+    activePlayerId = playerId
   }
 
   const client = await pool.connect()
   try {
     // Fetch player row
-    const playerRow = await client.query<{
+    let playerRow = await client.query<{
       id: string
       display_name: string | null
-      recovery_code: string
       created_at: string
       trials_completed: string[]
       recovery_tutorial_shown: boolean
     }>(
-      `SELECT id, display_name, recovery_code, created_at::text,
+      `SELECT id, display_name, created_at::text,
               trials_completed, recovery_tutorial_shown
         FROM players
         WHERE id = $1`,
-      [playerId]
+      [activePlayerId]
     )
+
+    // If player does not exist in local database yet, auto-provision
+    if (playerRow.rows.length === 0) {
+      const dailyPlayer = await getOrCreateDailyPlayer()
+      activePlayerId = dailyPlayer.coreId
+
+      playerRow = await client.query(
+        `SELECT id, display_name, created_at::text,
+                trials_completed, recovery_tutorial_shown
+          FROM players
+          WHERE id = $1`,
+        [activePlayerId]
+      )
+    }
 
     if (playerRow.rows.length === 0) {
       return { success: false, error: 'Player not found' }
@@ -53,31 +68,45 @@ export async function getPlayerProfile(
     const profile: PlayerProfile = {
       id: p.id,
       displayName: p.display_name,
-      recoveryCode: p.recovery_code,
       createdAt: p.created_at,
-      trialsCompleted: p.trials_completed,
-      recoveryTutorialShown: p.recovery_tutorial_shown
+      trialsCompleted: p.trials_completed ?? [],
+      recoveryTutorialShown: p.recovery_tutorial_shown ?? false
     }
 
     // Update last_seen_at
     await client.query(
       `UPDATE players SET last_seen_at = now() WHERE id = $1`,
-      [playerId]
+      [activePlayerId]
     )
 
     // Fetch per-category stats
     const stats: CategoryStats[] = []
 
     for (const category of CATEGORY_ORDER) {
-      const streakRow = await client.query<{
+      let streakRow = await client.query<{
         current_streak: number
         longest_streak: number
       }>(
         `SELECT current_streak, longest_streak
           FROM category_streaks
           WHERE player_id = $1 AND category = $2`,
-        [playerId, category]
+        [activePlayerId, category]
       )
+
+      if (streakRow.rows.length === 0) {
+        await client.query(
+          `INSERT INTO category_streaks (player_id, category, current_streak, longest_streak)
+            VALUES ($1, $2, 0, 0)
+            ON CONFLICT DO NOTHING`,
+          [activePlayerId, category]
+        )
+        streakRow = await client.query(
+          `SELECT current_streak, longest_streak
+            FROM category_streaks
+            WHERE player_id = $1 AND category = $2`,
+          [activePlayerId, category]
+        )
+      }
 
       const streak = streakRow.rows[0] ?? {
         current_streak: 0,
@@ -95,7 +124,7 @@ export async function getPlayerProfile(
                 AVG(normalized_score)::numeric(5,1) AS avg_score
           FROM daily_results
           WHERE player_id = $1 AND category = $2`,
-        [playerId, category]
+        [activePlayerId, category]
       )
 
       const agg = aggRow.rows[0]
@@ -105,21 +134,33 @@ export async function getPlayerProfile(
       // Global percentile: what fraction of players this player outscores (lower = better)
       let globalPercentile: number | null = null
       if (agg.best_score !== null) {
-        const percentileRow = await client.query<{ pct: string }>(
+        const percentileRow = await client.query<{
+          pct: string
+          total_players: string
+        }>(
           `WITH player_bests AS (
-              SELECT player_id, MAX(normalized_score) AS best
-              FROM daily_results
-              WHERE category = $1
-              GROUP BY player_id
-            )
-            SELECT ROUND(
-             100.0 * (SELECT COUNT(*) FROM player_bests WHERE best > $2)
-              / GREATEST((SELECT COUNT(*) FROM player_bests), 1)
-            , 1) AS pct`,
+          SELECT player_id, MAX(normalized_score) AS best
+          FROM daily_results
+          WHERE category = $1
+          GROUP BY player_id
+        )
+        SELECT ROUND(
+          100.0 * (SELECT COUNT(*) FROM player_bests WHERE best > $2)
+            / GREATEST((SELECT COUNT(*) FROM player_bests), 1)
+        , 1) AS pct,
+        (SELECT COUNT(*) FROM player_bests) AS total_players`,
           [category, agg.best_score]
         )
-        const pct = parseFloat(percentileRow.rows[0]?.pct ?? '0')
-        globalPercentile = isNaN(pct) ? null : pct
+        // A percentile over a tiny population is noise, not a rank
+        const totalPlayers = parseInt(
+          percentileRow.rows[0]?.total_players ?? '0',
+          10
+        )
+        if (totalPlayers >= 25) {
+          const pct = parseFloat(percentileRow.rows[0]?.pct ?? '0')
+          // Floor at 1.0 so the category leader reads "Top 1.0%", never "Top 0.0%"
+          globalPercentile = isNaN(pct) ? null : Math.max(1, pct)
+        }
       }
 
       stats.push({

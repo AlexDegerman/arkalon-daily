@@ -1,6 +1,10 @@
 import 'server-only'
 
-import type { PuzzleSeedData, PuzzleFamilyDefinition } from '@/types/puzzle'
+import type {
+  PuzzleSeedData,
+  PuzzleFamilyDefinition,
+  ClueTypeId
+} from '@/types/puzzle'
 import { generateChallenge } from './generateChallenge'
 
 export interface ValidationResult {
@@ -42,63 +46,90 @@ export function generateWithValidation(
     const trySeed =
       attempt === 0
         ? baseSeed
-        : baseSeed.slice(0, -2) + attempt.toString(16).padStart(2, '0')
-
+        : attempt.toString(16).padStart(2, '0') + baseSeed.slice(2)
     const data = generateChallenge(trySeed, family)
     const result = validateChallenge(family.id, data)
-
     if (result.valid) return data
   }
-
   throw new Error(
     `Could not generate a valid challenge for family "${family.id}" after ${maxAttempts} attempts`
   )
-}
-
-// Shared interestingness check used by multiple family validators.
-// Rejects axis combinations where all continuous parameters are at
-// their minimum or maximum, producing a monotone challenge.
-export function isMonotone(
-  values: number[],
-  min: number,
-  max: number
-): boolean {
-  return values.every((v) => v === min) || values.every((v) => v === max)
 }
 
 // Validates that the generated grid can be completed within the charge limit.
 export interface DepthsGridCell {
   isDeposit: boolean
   isClue: boolean
-  clueValue?: number | string
+  clueValue?: number | string | null
 }
-
 export function validateDepthsSolvability(
   grid: DepthsGridCell[][],
   gridSize: number,
   chargeLimit: number,
-  depositCount: number
+  depositCount: number,
+  clueType: ClueTypeId
 ): ValidationResult {
-  // Count tiles that are still "possible deposit" locations
-  // after eliminating based on clue constraints.
-  // This is a heuristic approximation - the exact constraint propagation
-  // is done per-clue-type in the full validator registered by crystalMine.ts.
-  let unknownTiles = 0
+  if (depositCount > chargeLimit) {
+    return { valid: false, reason: 'More deposits than charges' }
+  }
+  const possible = grid.map((row) => row.map((cell) => !cell.isClue))
+  const arrowOf = (dr: number, dc: number): string => {
+    if (dr === 0 && dc > 0) return '\u2192'
+    if (dr > 0 && dc > 0) return '\u2198'
+    if (dr > 0 && dc === 0) return '\u2193'
+    if (dr > 0 && dc < 0) return '\u2199'
+    if (dr === 0 && dc < 0) return '\u2190'
+    if (dr < 0 && dc < 0) return '\u2196'
+    if (dr < 0 && dc === 0) return '\u2191'
+    return '\u2197'
+  }
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
-      const cell = grid[r]?.[c]
-      if (cell && !cell.isClue && !cell.isDeposit) {
-        unknownTiles++
+      const clue = grid[r]?.[c]
+      if (!clue || !clue.isClue) continue
+      if (clue.clueValue === null || clue.clueValue === undefined) continue
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (!possible[y][x]) continue
+          const dr = y - r
+          const dc = x - c
+          const d = Math.abs(dr) + Math.abs(dc)
+          if (clueType === 'numeric') {
+            if (d !== clue.clueValue) possible[y][x] = false
+          } else if (clueType === 'hot_cold') {
+            const band = d === 1 ? 'HOT' : d <= 3 ? 'WARM' : 'COLD'
+            if (band !== clue.clueValue) possible[y][x] = false
+          } else if (clueType === 'directional') {
+            if (d === 0 || arrowOf(dr, dc) !== clue.clueValue) {
+              possible[y][x] = false
+            }
+          } else if (clueType === 'adjacency_count') {
+            // A zero count eliminates its neighborhood outright; higher
+            // counts constrain combinations, not single tiles.
+            if (
+              clue.clueValue === 0 &&
+              Math.abs(dr) <= 1 &&
+              Math.abs(dc) <= 1
+            ) {
+              possible[y][x] = false
+            }
+          }
+        }
       }
     }
   }
-
-  if (unknownTiles + depositCount > chargeLimit) {
+  const remaining = possible.flat().filter(Boolean).length
+  if (remaining > chargeLimit) {
     return {
       valid: false,
-      reason: `Unsolvable: ${unknownTiles} unknown tiles but only ${chargeLimit - depositCount} spare charges`
+      reason: `Unsolvable: ${remaining} possible tiles but only ${chargeLimit} charges`
     }
   }
-
+  const depositsPossible = grid.every((row, r) =>
+    row.every((cell, c) => !cell.isDeposit || possible[r][c])
+  )
+  if (!depositsPossible) {
+    return { valid: false, reason: 'Clues eliminate an actual deposit' }
+  }
   return { valid: true }
 }

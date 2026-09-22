@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
+import { FileText, Trophy, User, Gamepad2 } from 'lucide-react'
 import { LeaderboardRow } from './LeaderboardRow'
 import { getLeaderboard } from '@/app/actions/getLeaderboard'
 import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
+import { SoundControlButton } from '@/components/ui/SoundControlButton'
 import type { PuzzleCategory } from '@/types/puzzle'
 import type {
   LeaderboardEntry,
@@ -25,8 +28,6 @@ export function LeaderboardView() {
 
   const loadLeaderboard = useCallback(async (category: PuzzleCategory) => {
     const playerId = getPlayerId()
-    if (!playerId) return
-
     setLoading(true)
     const res = await getLeaderboard(playerId, category)
     setResult(res)
@@ -44,21 +45,10 @@ export function LeaderboardView() {
   const showPlayerSeparate = playerEntry && !playerInTop
 
   return (
-    <div className="mx-auto flex w-full max-w-180 flex-col gap-4 px-4 py-6 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold tracking-widest text-text-primary">
-          LEADERBOARD
-        </h1>
-        {result?.familyIndex !== undefined && (
-          <span className="text-xs text-text-muted">
-            {cat.displayName} #{result.familyIndex}
-          </span>
-        )}
-      </div>
-
-      {/* Category tabs */}
+    <div className="mx-auto w-full max-w-lg lg:max-w-4xl xl:max-w-5xl px-3 sm:px-4 py-3 sm:py-5 flex flex-col flex-1 pb-16">
+      {/* Category Tabs */}
       <div
-        className="flex gap-1 overflow-x-auto pb-1"
+        className="grid grid-cols-5 gap-1.5 w-full mb-3"
         role="tablist"
         aria-label="Leaderboard category"
       >
@@ -72,72 +62,111 @@ export function LeaderboardView() {
               aria-selected={isActive}
               onClick={() => setActiveCategory(slug)}
               className={[
-                'flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
-                'focus-visible:outline-2 focus-visible:outline-accent-recall',
+                'flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg border text-xs font-bold transition-all cursor-pointer',
                 isActive
                   ? 'bg-surface-panel text-text-primary'
-                  : 'text-text-muted hover:text-text-primary'
+                  : 'border-border-subtle bg-bg-base/60 text-text-muted hover:text-text-primary'
               ].join(' ')}
               style={
                 isActive
-                  ? { borderBottom: `2px solid ${c.accentColor}` }
+                  ? {
+                      borderColor: c.accentColor,
+                      boxShadow: `0 0 10px ${c.accentColor}25`
+                    }
                   : undefined
               }
             >
-              <span aria-hidden="true">{c.icon}</span>
-              <span className="hidden sm:inline">{c.displayName}</span>
+              <span className="text-base leading-none" aria-hidden="true">
+                {c.icon}
+              </span>
+              <span
+                className="text-[10px] uppercase tracking-wider font-mono font-black"
+                style={{ color: isActive ? c.accentColor : undefined }}
+              >
+                {c.displayName}
+              </span>
             </button>
           )
         })}
       </div>
 
-      {/* Summary */}
-      {result?.totalPlayers !== undefined && result.totalPlayers > 0 && (
-        <p className="text-xs text-text-muted">
-          {result.totalPlayers.toLocaleString()} players today
-          {result.playerRank != null && (
-            <span>
-              {' '}
-              &mdash; you ranked{' '}
-              <span className="font-semibold text-text-primary">
-                #{result.playerRank}
+      {/* Summary Subtext */}
+      <div className="flex items-center justify-between text-xs font-mono text-text-muted px-1 mb-2">
+        <span>
+          {cat.displayName.toUpperCase()} #{result?.familyIndex ?? 1}
+        </span>
+        {result?.totalPlayers !== undefined && result.totalPlayers > 0 ? (
+          <span>
+            {result.totalPlayers.toLocaleString()} PLAYERS
+            {result.playerRank != null && (
+              <span className="text-text-primary font-bold">
+                {' '}
+                • YOUR RANK #{result.playerRank}
               </span>
-            </span>
-          )}
-        </p>
-      )}
+            )}
+          </span>
+        ) : (
+          <span className="text-text-muted">0 PLAYERS TODAY</span>
+        )}
+      </div>
 
-      {/* Entries */}
+      {/* Main Content Area */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <p className="text-sm text-text-muted">Loading...</p>
+        <div className="flex justify-center py-16 rounded-xl border border-border-subtle bg-surface-panel">
+          <p className="text-xs font-mono text-text-muted animate-pulse">
+            TRANSMITTING TELEMETRY...
+          </p>
         </div>
       ) : result?.success === false ? (
         <div className="rounded-xl border border-border-subtle bg-surface-panel p-6 text-center">
-          <p className="text-sm text-text-muted">
+          <p className="text-xs font-mono text-status-fail">
             {result.error ?? 'Could not load leaderboard.'}
           </p>
         </div>
       ) : entries.length === 0 ? (
-        <div className="rounded-xl border border-border-subtle bg-surface-panel p-6 text-center">
-          <p className="text-sm text-text-muted">
-            No results yet for today&apos;s {cat.displayName} puzzle.
-          </p>
-          <p className="mt-1 text-xs text-text-muted">Be the first to play!</p>
+        /* Empty State: Prompt to Claim Rank #1 */
+        <div className="rounded-2xl border border-border-subtle bg-surface-panel/95 p-8 text-center flex flex-col items-center gap-3.5 shadow-2xl">
+          <div
+            className={`frame-${activeCategory} w-12 h-12 rounded-xl flex items-center justify-center text-2xl`}
+          >
+            {cat.icon}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <h3 className="font-mono text-sm font-black tracking-widest text-text-primary uppercase">
+              NO RECORDS SUBMITTED TODAY
+            </h3>
+            <p className="text-xs text-text-muted max-w-sm leading-relaxed">
+              Nobody has submitted a completed challenge for today&apos;s{' '}
+              <strong style={{ color: cat.accentColor }}>
+                {cat.displayName}
+              </strong>{' '}
+              puzzle yet.
+            </p>
+          </div>
+
+          <Link
+            href={`/${activeCategory}`}
+            className={`btn-${activeCategory} mt-2 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg`}
+          >
+            <span className={`title-${activeCategory}`}>
+              PLAY TO CLAIM RANK #1 &rarr;
+            </span>
+          </Link>
         </div>
       ) : (
+        /* Entry List */
         <div
-          className="rounded-xl border border-border-subtle bg-bg-base p-2"
+          className="rounded-xl border border-border-subtle bg-bg-base/90 p-2 flex flex-col gap-1 shadow-lg"
           role="list"
           aria-label={`${cat.displayName} leaderboard`}
         >
-          {entries.map((entry, i) => (
+          {entries.map((entry) => (
             <div key={`${entry.rank}-${entry.displayName}`} role="listitem">
               <LeaderboardRow entry={entry} showSeparator={false} />
             </div>
           ))}
 
-          {/* Player entry below top 50 */}
           {showPlayerSeparate && (
             <div role="listitem">
               <LeaderboardRow
@@ -147,14 +176,6 @@ export function LeaderboardView() {
             </div>
           )}
         </div>
-      )}
-
-      {/* Not yet played prompt */}
-      {result?.success && !playerEntry && entries.length > 0 && (
-        <p className="text-center text-xs text-text-muted">
-          Play today&apos;s {cat.displayName} puzzle to appear on the
-          leaderboard.
-        </p>
       )}
     </div>
   )

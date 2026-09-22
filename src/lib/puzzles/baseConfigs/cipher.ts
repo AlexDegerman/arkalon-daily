@@ -19,7 +19,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     roundCount: 4
   },
   {
-    generators: ['rotation_mirror'],
+    generators: ['tri_variable'],
     stepsShown: 4,
     choiceCount: 4,
     timerSeconds: null,
@@ -33,7 +33,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     roundCount: 3
   },
   {
-    generators: ['alternating', 'rotation_mirror'],
+    generators: ['alternating', 'tri_variable'],
     stepsShown: 4,
     choiceCount: 5,
     timerSeconds: null,
@@ -50,7 +50,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['constrained_choice'],
     stepsShown: 0,
     choiceCount: 4,
-    timerSeconds: 10,
+    timerSeconds: 15,
     roundCount: 4
   },
   {
@@ -61,7 +61,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     roundCount: 4
   },
   {
-    generators: ['grid_transform'],
+    generators: ['rule_discovery'],
     stepsShown: 3,
     choiceCount: 4,
     timerSeconds: null,
@@ -78,11 +78,11 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['alternating', 'constrained_choice'],
     stepsShown: 4,
     choiceCount: 4,
-    timerSeconds: 8,
+    timerSeconds: 14,
     roundCount: 5
   },
   {
-    generators: ['rotation_mirror', 'grid_transform'],
+    generators: ['tri_variable', 'constrained_choice'],
     stepsShown: 3,
     choiceCount: 5,
     timerSeconds: null,
@@ -99,11 +99,11 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['dual_variable', 'constrained_choice'],
     stepsShown: 5,
     choiceCount: 5,
-    timerSeconds: 6,
+    timerSeconds: 13,
     roundCount: 5
   },
   {
-    generators: ['grid_transform', 'tri_variable'],
+    generators: ['dual_variable', 'tri_variable'],
     stepsShown: 3,
     choiceCount: 6,
     timerSeconds: null,
@@ -113,7 +113,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['rule_discovery', 'constrained_choice', 'dual_variable'],
     stepsShown: 4,
     choiceCount: 6,
-    timerSeconds: 5,
+    timerSeconds: 12,
     roundCount: 6
   }
 ]

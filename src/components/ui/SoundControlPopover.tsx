@@ -99,7 +99,7 @@ export function SoundControlPopover() {
       <div className="divide-y divide-border-subtle">
         <ChannelRow
           label="Sound FX"
-          icon="\uD83D\uDD0A"
+          icon={'\uD83D\uDD0A'}
           enabled={sfxEnabled}
           volume={sfxVolume}
           onToggle={() => setSfxEnabled(!sfxEnabled)}
@@ -107,7 +107,7 @@ export function SoundControlPopover() {
         />
         <ChannelRow
           label="Arkalon Voice"
-          icon="\uD83D\uDC41\uFE0F"
+          icon={'\uD83D\uDC41\uFE0F'}
           enabled={arkalonTTSEnabled}
           volume={arkalonVolume}
           onToggle={() => setArkalonTTSEnabled(!arkalonTTSEnabled)}
@@ -115,7 +115,7 @@ export function SoundControlPopover() {
         />
         <ChannelRow
           label="Music"
-          icon="\uD83C\uDFB5"
+          icon={'\uD83C\uDFB5'}
           enabled={musicEnabled}
           volume={musicVolume}
           onToggle={() => setMusicEnabled(!musicEnabled)}

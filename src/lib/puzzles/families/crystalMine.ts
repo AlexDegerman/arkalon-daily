@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { seedToRng, nextInt, shuffle } from '@/lib/puzzles/seededRandom'
+import { nextInt, shuffle } from '@/lib/puzzles/seededRandom'
 import { DEPTHS_BASE_CONFIGS } from '@/lib/puzzles/baseConfigs/depths'
 import {
   calcChargeLimit,
@@ -18,6 +18,7 @@ import type {
 } from '@/types/puzzle'
 import type { ClueTypeId } from '@/types/puzzle'
 import type { DepositPatternId } from '@/lib/puzzles/compositionSystem'
+import { seedToRng } from '../generateChallenge'
 
 export interface GridCell {
   row: number
@@ -338,11 +339,16 @@ registerValidator('crystal_mine', (data) => {
 
   const result = validateDepthsSolvability(
     fam.grid.map((row) =>
-      row.map((c) => ({ isDeposit: c.isDeposit, isClue: c.isClue }))
+      row.map((c) => ({
+        isDeposit: c.isDeposit,
+        isClue: c.isClue,
+        clueValue: c.clueValue
+      }))
     ),
     fam.gridSize,
     fam.chargeLimit,
-    fam.depositCount
+    fam.depositCount,
+    fam.clueType
   )
   if (!result.valid) return result
 

@@ -1,9 +1,37 @@
 'use client'
 
 import { forwardRef } from 'react'
-import { getScoreTierClass } from '@/lib/format'
+import { getScoreTierSolidColor } from '@/lib/format'
 import { CATEGORIES } from '@/constants/categories'
 import type { ShareResult } from '@/types/puzzle'
+
+function FlameIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z" />
+    </svg>
+  )
+}
+
+function GemIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M6 3h12l4 6-10 12L2 9l4-6z" />
+    </svg>
+  )
+}
 
 // Visual performance strip - unique per category per Section 8.6.4
 function PerformanceStrip({ result }: { result: ShareResult }) {
@@ -185,8 +213,14 @@ function PerformanceStrip({ result }: { result: ShareResult }) {
                     }}
                   >
                     {isFound && (
-                      <span style={{ fontSize: cellSize * 0.55 }}>
-                        {'\uD83D\uDD37'}
+                      <span
+                        style={{
+                          fontSize: cellSize * 0.55,
+                          color: '#4fc3ff',
+                          display: 'inline-flex'
+                        }}
+                      >
+                        <GemIcon />
                       </span>
                     )}
                   </div>
@@ -210,8 +244,8 @@ interface ShareResultCardProps {
 // Fixed at 540x675px (half of 1080x1350 - html2canvas scales 2x).
 export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
   function ShareResultCard({ result }, ref) {
-    const cat = CATEGORIES[result.category]
-    const tierClass = getScoreTierClass(result.score)
+  const cat = CATEGORIES[result.category]
+  const tierColor = getScoreTierSolidColor(result.score)
 
     return (
       <div
@@ -239,7 +273,7 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
             style={{
               fontSize: 11,
               letterSpacing: '0.15em',
-              color: '#7c8ba1',
+              color: '#00ff66',
               textTransform: 'uppercase',
               margin: 0
             }}
@@ -275,13 +309,13 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
         {/* Score */}
         <div style={{ textAlign: 'center' }}>
           <p
-            className={tierClass}
             style={{
               fontSize: 72,
               fontWeight: 700,
               fontFamily: 'monospace',
               margin: 0,
-              lineHeight: 1
+              lineHeight: 1,
+              color: tierColor
             }}
           >
             {result.score}
@@ -299,14 +333,23 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
           </p>
         </div>
 
-        {/* Family + family index */}
+        {/* Category + family index */}
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 13, color: '#7c8ba1', margin: 0 }}>
-            {result.familyName} #{result.familyIndex}
+            {cat.displayName} #{result.familyIndex}
           </p>
           {result.streakDays >= 1 && (
             <p style={{ fontSize: 13, color: '#e8edf4', margin: '4px 0 0' }}>
-              {'\uD83D\uDD25'} {result.streakDays}-day streak
+              <span
+                style={{
+                  color: '#f59e0b',
+                  display: 'inline-flex',
+                  verticalAlign: '-2px'
+                }}
+              >
+                <FlameIcon />
+              </span>{' '}
+              {result.streakDays}-day streak
             </p>
           )}
         </div>

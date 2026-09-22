@@ -15,31 +15,47 @@ import {
 } from '@/lib/puzzles/scoring'
 import type { PuzzleCategory } from '@/types/puzzle'
 
-// Rate limiting store: playerId -> { count, windowStart }
-// Eviction: entries older than 120s are pruned on each request
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
-const RATE_WINDOW_MS = 60_000
 const RATE_MAX = 5
-const RATE_EVICT_MS = 120_000
+const RATE_WINDOW_MS = 60 * 1000
+
+interface RateLimitState {
+  timestamps: number[]
+}
+
+const rateLimitMap = new Map<string, RateLimitState>()
 
 function checkRateLimit(playerId: string): boolean {
   const now = Date.now()
+  const state = rateLimitMap.get(playerId) ?? { timestamps: [] }
 
-  // On-access eviction of stale entries
-  for (const [id, entry] of rateLimitMap) {
-    if (now - entry.windowStart > RATE_EVICT_MS) {
-      rateLimitMap.delete(id)
+  state.timestamps = state.timestamps.filter((t) => now - t < RATE_WINDOW_MS)
+
+  if (state.timestamps.length >= RATE_MAX) {
+    rateLimitMap.set(playerId, state)
+    return false
+  }
+
+  state.timestamps.push(now)
+  rateLimitMap.set(playerId, state)
+  return true
+}
+
+let checksSinceCleanup = 0
+const CLEANUP_INTERVAL = 100
+
+function cleanupStaleEntries(): void {
+  const now = Date.now()
+  for (const [key, state] of rateLimitMap) {
+    state.timestamps = state.timestamps.filter((t) => now - t < RATE_WINDOW_MS)
+    if (state.timestamps.length === 0) {
+      rateLimitMap.delete(key)
     }
   }
+}
 
-  const entry = rateLimitMap.get(playerId)
-  if (!entry || now - entry.windowStart > RATE_WINDOW_MS) {
-    rateLimitMap.set(playerId, { count: 1, windowStart: now })
-    return true
-  }
-  if (entry.count >= RATE_MAX) return false
-  entry.count++
-  return true
+if (process.env.NODE_ENV !== 'test') {
+  const timer = setInterval(cleanupStaleEntries, 60 * 60 * 1000)
+  timer.unref()
 }
 
 const FamilyMetricsSchema = z.union([
@@ -86,6 +102,7 @@ const FamilyMetricsSchema = z.union([
     correctRounds: z.number().int().min(0),
     totalRounds: z.number().int().min(1),
     totalIncorrectGuesses: z.number().int().min(0),
+    avgResponseMs: z.number().int().min(0),
     totalElapsedMs: z.number().int().min(0)
   }),
   // Depths
@@ -167,12 +184,17 @@ export async function submitResult(
   const { playerId, category, puzzleFamilyId, puzzleDate, familyMetrics } =
     parsed.data
 
-  if (!checkRateLimit(playerId)) {
-    return { success: false, error: 'Too many submissions. Please wait.' }
-  }
-
   const client = await pool.connect()
   try {
+    checksSinceCleanup++
+    if (checksSinceCleanup >= CLEANUP_INTERVAL) {
+      checksSinceCleanup = 0
+      cleanupStaleEntries()
+    }
+
+    if (!checkRateLimit(playerId)) {
+      return { success: false, error: 'Too many submissions. Please wait.' }
+    }
     // Validate player exists
     const playerRow = await client.query(
       `SELECT id FROM players WHERE id = $1`,
@@ -197,9 +219,9 @@ export async function submitResult(
     try {
       await client.query(
         `INSERT INTO daily_results
-            (id, player_id, puzzle_date, category, puzzle_family_id,
-            status, normalized_score, elapsed_ms, family_specific_metrics, submitted_at)
-          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, now())`,
+          (id, player_id, puzzle_date, category, puzzle_family_id,
+          status, normalized_score, elapsed_ms, family_specific_metrics, submitted_at)
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, now())`,
         [
           playerId,
           puzzleDate,
@@ -234,11 +256,11 @@ export async function submitResult(
     // Upsert streak row
     await client.query(
       `INSERT INTO category_streaks (player_id, category, current_streak, longest_streak)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (player_id, category)
-        DO UPDATE SET
-          current_streak = EXCLUDED.current_streak,
-          longest_streak = GREATEST(category_streaks.longest_streak, EXCLUDED.longest_streak)`,
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (player_id, category)
+      DO UPDATE SET
+        current_streak = EXCLUDED.current_streak,
+        longest_streak = GREATEST(category_streaks.longest_streak, EXCLUDED.longest_streak)`,
       [playerId, category, currentStreak, longestStreak]
     )
 
@@ -258,8 +280,8 @@ export async function submitResult(
         if (!celebrated.includes(milestoneKey)) {
           await client.query(
             `UPDATE players
-              SET milestones_celebrated = array_append(milestones_celebrated, $2)
-              WHERE id = $1`,
+            SET milestones_celebrated = array_append(milestones_celebrated, $2)
+            WHERE id = $1`,
             [playerId, milestoneKey]
           )
           newMilestone = milestone

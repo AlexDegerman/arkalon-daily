@@ -1,10 +1,8 @@
 import 'server-only'
 
 import {
-  seedToRng,
   nextInt,
   nextFloat,
-  pickOne,
   shuffle
 } from '@/lib/puzzles/seededRandom'
 import { RECALL_GLYPHS } from '@/lib/puzzles/compositionSystem'
@@ -15,6 +13,7 @@ import type {
   PuzzleSeedData,
   ResultMetricDefinition
 } from '@/types/puzzle'
+import { seedToRng } from '../generateChallenge'
 
 // Resolved data produced by the generator and consumed by ArkalonVision component
 export interface ArkalonVisionData {
@@ -32,21 +31,18 @@ export interface ArkalonVisionRound {
 
 function generate(seed: string): PuzzleSeedData {
   const rng = seedToRng(seed)
-
   // Pick base config by seeded index
   const baseConfig =
     RECALL_BASE_CONFIGS[nextInt(rng, RECALL_BASE_CONFIGS.length)]
 
   // Continuous-parameter variation on top of the base config
-  // Display duration varies +-12% from the base value (tighter range
-  // avoids collapsing short configs below the 1000ms playability floor)
+  // Per-glyph display duration varies +-12% from the base value (tighter range
+  // avoids collapsing short configs below the 450ms per-glyph playability floor)
   const durationVariance = nextFloat(rng, 0.88, 1.12)
-  const displayDurationMs = Math.round(
-    baseConfig.displayDurationMs * durationVariance
-  )
+  const basePerGlyph = Math.round(baseConfig.perGlyphMs * durationVariance)
 
-  // Clamp to valid range: 1000-3500ms
-  const clampedDuration = Math.min(3500, Math.max(1000, displayDurationMs))
+  // Clamp to valid range: 500-1000ms per glyph
+  const clampedPerGlyph = Math.min(1000, Math.max(500, basePerGlyph))
 
   // Select active glyph pool (contiguous from index 0 per spec)
   const glyphPool = Array.from(RECALL_GLYPHS).slice(0, baseConfig.glyphPool)
@@ -62,7 +58,10 @@ function generate(seed: string): PuzzleSeedData {
     (seqLen, roundIdx) => {
       // Each round has a slight duration variation for engagement
       const roundDurationVariance = nextFloat(rng, 0.92, 1.08)
-      const roundDuration = Math.round(clampedDuration * roundDurationVariance)
+      // Round total scales with sequence length so per-glyph time stays constant
+      const roundDuration = Math.round(
+        clampedPerGlyph * seqLen * roundDurationVariance
+      )
 
       // Build sequence: draw from glyph pool with replacement
       const sequence: string[] = []
@@ -96,7 +95,8 @@ function generate(seed: string): PuzzleSeedData {
   return {
     profile: {
       sequenceLength: baseConfig.seqLengths[baseConfig.seqLengths.length - 1],
-      displayDurationMs: clampedDuration,
+      // Per-glyph duration; round totals live in familyData.rounds
+      displayDurationMs: clampedPerGlyph,
       glyphPool: baseConfig.glyphPool,
       randomizedLayout: baseConfig.randomizedLayout,
       reverseEntry: baseConfig.reverseEntry,
@@ -123,15 +123,24 @@ export const ArkalonVisionFamily: PuzzleFamilyDefinition = {
 }
 
 // Validator: sequence length must not exceed glyph pool size;
-// display duration must be at least 1000ms; rejects monotone configs.
+// per-glyph display duration must be at least 450ms; rejects monotone configs.
 registerValidator('arkalon_vision', (data) => {
   const fam = data.familyData as unknown as ArkalonVisionData
-
+  // profile.displayDurationMs carries the clamped per-glyph duration
+  const profilePerGlyphMs = data.profile.displayDurationMs ?? 0
+  if (profilePerGlyphMs < 500) {
+    return {
+      valid: false,
+      reason: `Per-glyph display duration too short: ${profilePerGlyphMs}ms`
+    }
+  }
   for (const round of fam.rounds) {
-    if (round.displayDurationMs < 1000) {
+    // Hard floor: no round may dip below 450ms per glyph after engagement variance
+    const perGlyphMs = round.displayDurationMs / round.sequence.length
+    if (perGlyphMs < 450) {
       return {
         valid: false,
-        reason: `Display duration too short: ${round.displayDurationMs}ms`
+        reason: `Per-glyph display duration too short: ${Math.round(perGlyphMs)}ms`
       }
     }
     for (const glyph of round.sequence) {
@@ -140,18 +149,20 @@ registerValidator('arkalon_vision', (data) => {
       }
     }
   }
-
   // Reject if all rounds have sequence length <= 2 (trivially easy)
   const allTrivial = fam.rounds.every((r) => r.sequence.length <= 2);
   if (allTrivial) {
     return { valid: false, reason: 'All rounds are trivially short' };
   }
-
-  // Reject if display duration is so short all rounds are below 1200ms
-  const allTooFast = fam.rounds.every((r) => r.displayDurationMs < 1200);
+  // Reject if per-glyph display duration is so short all rounds are below 450ms
+  const allTooFast = fam.rounds.every(
+    (r) => r.displayDurationMs / r.sequence.length < 450
+  );
   if (allTooFast) {
-    return { valid: false, reason: 'All rounds have display duration below 1200ms' };
+    return {
+      valid: false,
+      reason: 'All rounds have per-glyph display duration below 450ms'
+    };
   }
-
   return { valid: true }
 })

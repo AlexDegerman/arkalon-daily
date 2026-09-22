@@ -1,13 +1,14 @@
 export interface UpdateEntry {
+  id: string
   version: string
   date: string
   changes: string[]
 }
 
-// Version history for the UpdateModal.
-// Prepend new entries when releasing updates.
+// Version history for the UpdateModal and Updates page.
 export const UPDATES: UpdateEntry[] = [
   {
+    id: 'v1.0.0-launch',
     version: '1.0.0',
     date: '2027-01-01',
     changes: [
@@ -18,4 +19,5 @@ export const UPDATES: UpdateEntry[] = [
   }
 ]
 
-export const CURRENT_VERSION = '1.0.0'
+export const LATEST_UPDATE = UPDATES[0]
+export const UPDATES_VERSION = LATEST_UPDATE.id

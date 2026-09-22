@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import type {
   PuzzleCategory,
   CategoryStatus,
@@ -16,17 +15,13 @@ import { ShareResultButton } from '@/components/share/ShareResultButton'
 
 interface ResultScreenProps {
   category: PuzzleCategory
-  familyName: string
   familyIndex: number
   score: number
-  status: 'solved' | 'failed'
-  elapsedMs: number
   metricDefinitions: ResultMetricDefinition[]
   metricValues: Record<string, unknown>
   rank?: number
   totalPlayers?: number
   percentile?: number
-  todayScore?: number
   personalBest?: number
   averageScore?: number
   streakDays: number
@@ -58,13 +53,18 @@ const RARITY_FRAME: Record<string, string> = {
   common: 'border-border-subtle'
 }
 
+const RARITY_AURA: Record<string, string> = {
+  mythical: 'aura-mythical',
+  legendary: 'aura-legendary',
+  epic: 'aura-epic',
+  rare: 'aura-rare',
+  common: 'aura-common'
+}
+
 export function ResultScreen({
   category,
-  familyName,
   familyIndex,
   score,
-  status,
-  elapsedMs,
   metricDefinitions,
   metricValues,
   rank,
@@ -80,22 +80,23 @@ export function ResultScreen({
   const tierClass = getScoreTierClass(score)
   const rarity = getScoreRarity(score)
   const frameClass = RARITY_FRAME[rarity] ?? 'border-border-subtle'
+  const auraClass = RARITY_AURA[rarity] ?? ''
 
   return (
     <div className="mx-auto flex w-full max-w-180 flex-col items-center gap-6 px-4 py-6 pb-24">
       {/* Header */}
       <div className="text-center">
         <p className="text-xs uppercase tracking-widest text-text-muted">
-          {cat.displayName.toUpperCase()}
+          {cat.displayName.toUpperCase()} #{familyIndex}
         </p>
         <p className="mt-1 text-sm font-semibold text-text-primary">
-          {familyName.toUpperCase()} COMPLETE
+          CHALLENGE COMPLETE
         </p>
       </div>
 
       {/* Score */}
       <div
-        className={`rounded-xl border-2 bg-surface-panel px-10 py-6 text-center ${frameClass}`}
+        className={`relative isolate rounded-xl border-2 bg-surface-panel px-10 py-6 text-center ${frameClass} ${auraClass}`}
       >
         <div
           className={`font-mono text-6xl font-bold ${tierClass}`}
@@ -179,7 +180,6 @@ export function ResultScreen({
           {
             type: category,
             category,
-            familyName,
             familyIndex,
             score,
             metrics: metricValues,
@@ -194,23 +194,7 @@ export function ResultScreen({
       <ContinuationPanel currentCategory={category} allStatuses={allStatuses} />
 
       {/* Network recommendation - below fold */}
-      <NetworkRecommendation category={category} />
-
-      {/* Navigation */}
-      <div className="flex w-full gap-3">
-        <Link
-          href="/profile"
-          className="flex-1 rounded-lg border border-border-subtle px-4 py-3 text-center text-xs font-semibold tracking-wider text-text-muted transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-accent-recall"
-        >
-          VIEW PROFILE
-        </Link>
-        <Link
-          href="/"
-          className="flex-1 rounded-lg border border-border-subtle px-4 py-3 text-center text-xs font-semibold tracking-wider text-text-muted transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-accent-recall"
-        >
-          RETURN HOME
-        </Link>
-      </div>
+      <NetworkRecommendation />
     </div>
   )
 }

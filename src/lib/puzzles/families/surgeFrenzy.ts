@@ -1,18 +1,18 @@
 import 'server-only'
 
 import {
-  seedToRng,
   nextInt,
   nextFloat,
-  pickOne
 } from '@/lib/puzzles/seededRandom'
 import { SURGE_BASE_CONFIGS } from '@/lib/puzzles/baseConfigs/surge'
 import {
   SURGE_PLAY_WIDTH,
   SURGE_PLAY_HEIGHT,
   SURGE_BASE_NODE_LIFETIME_MS,
-  SURGE_BASE_SPAWN_INTERVAL_MS,
-  SURGE_SESSION_DURATION_MS,
+  SURGE_BURST_STAGGER_MS,
+  SURGE_BURST_LIFETIME_BONUS,
+  SURGE_MAX_BURST_LIFETIME_SCALE,
+  SURGE_MIN_SPAWN_MARGIN_MS,
   getSessionDurationMs,
   calcSpawnInterval
 } from '@/lib/puzzles/compositionSystem'
@@ -28,6 +28,7 @@ import type {
   TimingProfileId,
   SpatialLayoutId
 } from '@/types/puzzle'
+import { seedToRng } from '../generateChallenge'
 
 export interface SurgeNode {
   id: number
@@ -76,10 +77,6 @@ function generateSpawnSequence(
 
   while (tMs < sessionDurationMs) {
     const interval = calcSpawnInterval(timingProfile, tMs, rng())
-    const lifetimeMs = Math.round(
-      SURGE_BASE_NODE_LIFETIME_MS * nextFloat(rng, 0.85, 1.15)
-    )
-
     // Determine positions based on pattern
     const positions: { x: number; y: number }[] = []
 
@@ -212,7 +209,10 @@ function generateSpawnSequence(
         const px = nextFloat(rng, 80, SURGE_PLAY_WIDTH - 80)
         const py = nextFloat(rng, 60, SURGE_PLAY_HEIGHT - 60)
         positions.push({ x: px, y: py })
-        positions.push({ x: SURGE_PLAY_WIDTH - px, y: SURGE_PLAY_HEIGHT - py })
+        positions.push({
+          x: SURGE_PLAY_WIDTH - px,
+          y: SURGE_PLAY_HEIGHT - py
+        })
         break
       }
       case 'triple_burst': {
@@ -240,7 +240,10 @@ function generateSpawnSequence(
       }
       case 'wave': {
         const wx = (spawnStep % 10) * 60 + 30
-        positions.push({ x: wx, y: 200 + 120 * Math.sin((wx * Math.PI) / 300) })
+        positions.push({
+          x: wx,
+          y: 200 + 120 * Math.sin((wx * Math.PI) / 300)
+        })
         break
       }
       case 'spiral': {
@@ -279,26 +282,38 @@ function generateSpawnSequence(
       x: Math.min(SURGE_PLAY_WIDTH - 40, Math.max(40, p.x)),
       y: Math.min(SURGE_PLAY_HEIGHT - 40, Math.max(40, p.y))
     }))
-
+    // Bursts get longer-lived nodes so a group of simultaneous targets
+    // stays clickable for the whole group, not just the first node
+    const burstScale = Math.min(
+      SURGE_MAX_BURST_LIFETIME_SCALE,
+      1 + SURGE_BURST_LIFETIME_BONUS * (clamped.length - 1)
+    )
+    const lifetimeMs = Math.round(
+      SURGE_BASE_NODE_LIFETIME_MS * nextFloat(rng, 0.85, 1.15) * burstScale
+    )
     // Create nodes - occasional decoy injection when hasDecoys enabled
     clamped.forEach((pos, posIdx) => {
+      const spawnAtMs = tMs + posIdx * SURGE_BURST_STAGGER_MS
+      // Drop nodes that would appear too close to session end to tap
+      if (spawnAtMs > sessionDurationMs - SURGE_MIN_SPAWN_MARGIN_MS) return
       const isDecoy = hasDecoys && posIdx === 0 && rng() < 0.18
       nodes.push({
         id: id++,
         x: pos.x,
         y: pos.y,
-        spawnAtMs: tMs,
+        spawnAtMs,
         lifetimeMs,
         isDecoy,
         behavior,
         initialRadius: 24
       })
     })
-
     tMs += interval
     spawnStep++
   }
-
+  // Staggered bursts break spawn-order sorting; the runtime spawn loop
+  // expects nodes ordered by spawnAtMs
+  nodes.sort((a, b) => a.spawnAtMs - b.spawnAtMs || a.id - b.id)
   return nodes
 }
 

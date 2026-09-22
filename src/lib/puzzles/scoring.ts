@@ -135,7 +135,9 @@ export function scoreDepths(metrics: DepthsSessionMetrics): number {
   const wastedCharges = metrics.chargesUsed - metrics.depositsFound
   const maxWaste = metrics.chargeLimit - metrics.totalDeposits
   const efficiencyBonus =
-    maxWaste > 0 ? 20 * Math.max(0, 1.0 - wastedCharges / maxWaste) : 0
+    maxWaste > 0
+      ? 20 * Math.min(1, Math.max(0, 1.0 - wastedCharges / maxWaste))
+      : 0
   return Math.min(100, Math.max(0, Math.round(discoveryBase + efficiencyBonus)))
 }
 

@@ -3,97 +3,10 @@
 // select from them by index without hardcoding strings.
 
 import type {
-  SpawnPatternId,
-  TargetBehaviorId,
-  TimingProfileId,
-  SpatialLayoutId,
+  ClueTypeId,
   MotionFunctionId,
-  PatternGeneratorId,
-  ClueTypeId
+  TimingProfileId
 } from '@/types/puzzle'
-
-export const SPAWN_PATTERNS: SpawnPatternId[] = [
-  'single',
-  'alternating',
-  'h_sweep',
-  'v_sweep',
-  'diagonal',
-  'zigzag',
-  'scatter',
-  'circular',
-  'expanding',
-  'contracting',
-  'corner_seq',
-  'center_out',
-  'outside_in',
-  'paired',
-  'triple_burst',
-  'cross',
-  'wave',
-  'spiral',
-  'lane_switch'
-]
-
-export const TARGET_BEHAVIORS: TargetBehaviorId[] = [
-  'stationary',
-  'moving',
-  'accelerating',
-  'decelerating',
-  'direction_change',
-  'brief',
-  'growing',
-  'shrinking',
-  'fading',
-  'splitting'
-]
-
-export const TIMING_PROFILES: TimingProfileId[] = [
-  'ramp',
-  'sudden_spike',
-  'wave',
-  'endurance',
-  'pressure',
-  'mixed',
-  'slow_short',
-  'fast_long'
-]
-
-export const SPATIAL_LAYOUTS: SpatialLayoutId[] = [
-  'lr_lanes',
-  'tb_lanes',
-  'corners',
-  'center',
-  'circular_perimeter',
-  'grid',
-  'random',
-  'symmetrical',
-  'asymmetrical',
-  'narrow_corridor'
-]
-
-export const MOTION_FUNCTIONS: MotionFunctionId[] = [
-  'linear',
-  'sinusoidal',
-  'erratic',
-  'deceptive'
-]
-
-export const PATTERN_GENERATORS: PatternGeneratorId[] = [
-  'alternating',
-  'rotation_mirror',
-  'dual_variable',
-  'tri_variable',
-  'rule_discovery',
-  'grid_transform',
-  'constrained_choice'
-]
-
-export const CLUE_TYPES: ClueTypeId[] = [
-  'numeric',
-  'directional',
-  'hot_cold',
-  'adjacency_count'
-]
 
 // Deposit pattern templates for Crystal Mine (Depths)
 export type DepositPatternId =
@@ -123,10 +36,13 @@ export const SURGE_PLAY_HEIGHT = 400
 
 // Surge timing constants
 export const SURGE_BASE_NODE_LIFETIME_MS = 1500
-export const SURGE_BASE_SPAWN_INTERVAL_MS = 800
-export const SURGE_SESSION_DURATION_MS = 90_000
-export const SURGE_MAX_SIMULTANEOUS_NODES = 4
+export const SURGE_SESSION_DURATION_MS = 60_000
+export const SURGE_MAX_SIMULTANEOUS_NODES = 6
 export const SURGE_NODE_HIT_RADIUS_PX = 48
+export const SURGE_BURST_STAGGER_MS = 300
+export const SURGE_BURST_LIFETIME_BONUS = 0.35
+export const SURGE_MAX_BURST_LIFETIME_SCALE = 2.2
+export const SURGE_MIN_SPAWN_MARGIN_MS = 800
 
 // Strike track width (logical units)
 export const STRIKE_TRACK_WIDTH = 600
@@ -187,22 +103,22 @@ export function calcSpawnInterval(
   const t = tMs / 1000
   switch (profile) {
     case 'ramp': {
-      // Linear decrease 800 -> 300 over 90s
-      const progress = Math.min(1, t / 90)
-      return 800 - progress * 500
+      // Linear decrease 800 -> 500 over 60s
+      const progress = Math.min(1, t / 60)
+      return 800 - progress * 300
     }
     case 'sudden_spike':
-      return t < 54 ? 700 : 200
+      return t < 36 ? 700 : 400
     case 'wave':
       return 600 + 200 * Math.sin((2 * Math.PI * t) / 15)
     case 'endurance':
       return 500
     case 'pressure':
-      return 300
+      return 500
     case 'mixed': {
       // 15-second segments with seeded interval pick
       const segmentIndex = Math.floor(t / 15)
-      const options = [300, 500, 700]
+      const options = [500, 700, 900]
       return (
         options[Math.floor(seededJitter * options.length) % options.length] ??
         500
@@ -211,16 +127,16 @@ export function calcSpawnInterval(
     case 'slow_short':
       return 800
     case 'fast_long':
-      return 400
+      return 700
     default:
       return 500
   }
 }
 
-// Session duration override for timing profiles that change the 90s default
+// Session duration override for timing profiles that change the 60s default
 export function getSessionDurationMs(profile: TimingProfileId): number {
-  if (profile === 'slow_short') return 60_000
-  if (profile === 'fast_long') return 120_000
+  if (profile === 'slow_short') return 45_000
+  if (profile === 'fast_long') return 90_000
   return SURGE_SESSION_DURATION_MS
 }
 

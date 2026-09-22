@@ -46,11 +46,12 @@ const RARITY_BORDER: Record<string, string> = {
   rainbow: 'border-[#a78bfa]'
 }
 
-const RARITY_GLOW: Record<string, string> = {
-  rare: 'shadow-[0_0_24px_rgba(59,130,246,0.4)]',
-  legendary: 'shadow-[0_0_24px_rgba(245,158,11,0.4)]',
-  mythical: 'shadow-[0_0_32px_rgba(239,68,68,0.5)]',
-  rainbow: 'shadow-[0_0_32px_rgba(167,139,250,0.6)]'
+const RARITY_AURA: Record<string, string> = {
+  rare: 'aura-rare',
+  epic: 'aura-epic',
+  legendary: 'aura-legendary',
+  mythical: 'aura-mythical',
+  rainbow: 'aura-godking'
 }
 
 export function StreakMilestoneOverlay({
@@ -67,7 +68,7 @@ export function StreakMilestoneOverlay({
   const cat = CATEGORIES[category]
   const rarity = MILESTONE_RARITY[milestone] ?? 'rare'
   const borderClass = RARITY_BORDER[rarity] ?? 'border-border-subtle'
-  const glowClass = RARITY_GLOW[rarity] ?? ''
+  const auraClass = RARITY_AURA[rarity] ?? ''
 
   useEffect(() => {
     const soundKey = MILESTONE_SOUND[milestone]
@@ -99,9 +100,9 @@ export function StreakMilestoneOverlay({
     >
       <div
         className={[
-          'w-full max-w-sm rounded-xl border-2 bg-surface-panel p-6 text-center',
+          'relative isolate w-full max-w-sm rounded-xl border-2 bg-surface-panel p-6 text-center',
           borderClass,
-          glowClass
+          auraClass
         ].join(' ')}
       >
         {/* Category icon + streak flame */}
