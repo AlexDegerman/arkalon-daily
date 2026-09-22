@@ -131,6 +131,9 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       }
       if (res.alreadyPlayed) {
         // Rebuild today's result screen from the stored attempt
+        try {
+          localStorage.removeItem(`arkalon_daily_${category}_session`)
+        } catch {}
         setPuzzleInfo(res.puzzleInfo ?? null)
         setSeedData(res.seedData ?? null)
         setStreakDays(res.streakDays ?? 0)
@@ -251,6 +254,9 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         speakArkalon(getResultTTSLine(score), arkalonVolume)
       }
 
+      try {
+        localStorage.removeItem(`arkalon_daily_${category}_session`)
+      } catch {}
       setResultScore(score)
       setStreakDays(res.currentStreak ?? 0)
       setResultMetrics(displayMetrics)

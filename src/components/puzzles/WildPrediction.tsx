@@ -242,32 +242,84 @@ function RoundDisplay({ round }: { round: CipherRound }) {
   )
 }
 
+interface SavedCipherSession {
+  roundIndex: number
+  correctRounds: number
+  totalErrors: number
+  incorrectGuesses: number
+  responseMsList: number[]
+  roundStartTimestamp: number
+  elapsedMs: number
+  date: string
+}
+
+function getSavedCipherSession(): SavedCipherSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('arkalon_daily_cipher_session')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    if (parsed.date !== today) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export function WildPrediction({
   data,
   isTrial,
   onComplete
 }: WildPredictionProps) {
   const { play } = useSound()
+  const [savedSession] = useState(() =>
+    isTrial ? null : getSavedCipherSession()
+  )
 
-  const [roundIndex, setRoundIndex] = useState(0)
+  const [roundIndex, setRoundIndex] = useState(
+    () => savedSession?.roundIndex ?? 0
+  )
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null)
-  const [incorrectGuesses, setIncorrectGuesses] = useState(0)
+  const [incorrectGuesses, setIncorrectGuesses] = useState(
+    () => savedSession?.incorrectGuesses ?? 0
+  )
   const [timeLeft, setTimeLeft] = useState<number | null>(data.timerSeconds)
 
-  const sessionStartRef = useRef(Date.now())
+  const sessionStartRef = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
   const roundStartRef = useRef(Date.now())
-  const responseMsRef = useRef<number[]>([])
-  const correctRoundsRef = useRef(0)
-  const totalErrorsRef = useRef(0)
+  const responseMsRef = useRef<number[]>(savedSession?.responseMsList ?? [])
+  const correctRoundsRef = useRef(savedSession?.correctRounds ?? 0)
+  const totalErrorsRef = useRef(savedSession?.totalErrors ?? 0)
 
   const currentRound: CipherRound | undefined = data.rounds[roundIndex]
 
   // Per-round countdown timer
   useEffect(() => {
     if (data.timerSeconds === null) return
-    setTimeLeft(data.timerSeconds)
+
+    let initialTime = data.timerSeconds
+    if (
+      savedSession &&
+      savedSession.roundIndex === roundIndex &&
+      savedSession.roundStartTimestamp
+    ) {
+      const elapsedSec = Math.floor(
+        (Date.now() - savedSession.roundStartTimestamp) / 1000
+      )
+      initialTime = Math.max(0, data.timerSeconds - elapsedSec)
+    }
+
+    setTimeLeft(initialTime)
     roundStartRef.current = Date.now()
+
+    if (initialTime <= 0) {
+      totalErrorsRef.current++
+      responseMsRef.current.push(data.timerSeconds * 1000)
+      advanceRound(false)
+      return
+    }
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -303,13 +355,19 @@ export function WildPrediction({
         'arkalon_daily_cipher_session',
         JSON.stringify({
           roundIndex,
+          correctRounds: correctRoundsRef.current,
+          totalErrors: totalErrorsRef.current,
+          incorrectGuesses,
+          responseMsList: responseMsRef.current,
+          roundStartTimestamp: roundStartRef.current,
+          elapsedMs: Date.now() - sessionStartRef.current,
           date: new Date().toISOString().slice(0, 10)
         })
       )
     } catch {
       // localStorage unavailable
     }
-  }, [roundIndex, isTrial])
+  }, [roundIndex, incorrectGuesses, isTrial])
 
   const advanceRound = useCallback(
     (wasCorrect: boolean) => {
@@ -322,6 +380,9 @@ export function WildPrediction({
 
         const nextIndex = roundIndex + 1
         if (nextIndex >= data.rounds.length) {
+          try {
+            localStorage.removeItem('arkalon_daily_cipher_session')
+          } catch {}
           const totalElapsedMs = Date.now() - sessionStartRef.current
           const avgResponseMs =
             responseMsRef.current.length > 0
@@ -384,7 +445,7 @@ export function WildPrediction({
   )
 
   if (!currentRound) return null
-  
+
   return (
     <div className="flex w-full flex-col gap-4">
       {isTrial && <TrialBanner />}

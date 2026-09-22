@@ -36,23 +36,63 @@ interface ArkalonVisionProps {
   onComplete: (result: ArkalonVisionResult) => void
 }
 
+interface SavedRecallSession {
+  roundIndex: number
+  phase: RoundPhase
+  entered: string[]
+  errors: number
+  roundResults: ArkalonVisionResult['rounds']
+  elapsedMs: number
+  date: string
+}
+
+function getSavedRecallSession(): SavedRecallSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('arkalon_daily_recall_session')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    if (parsed.date !== today) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export function ArkalonVision({
   data,
   isTrial,
   onComplete
 }: ArkalonVisionProps) {
   const { play } = useSound()
+  const [savedSession] = useState(() =>
+    isTrial ? null : getSavedRecallSession()
+  )
 
-  const [roundState, setRoundState] = useState<RoundState>({
-    roundIndex: 0,
-    phase: 'display',
-    entered: [],
-    errors: 0,
-    startMs: 0
+  const [roundState, setRoundState] = useState<RoundState>(() => {
+    if (savedSession) {
+      return {
+        roundIndex: savedSession.roundIndex,
+        phase: savedSession.phase === 'feedback' ? 'input' : savedSession.phase,
+        entered: savedSession.entered ?? [],
+        errors: savedSession.errors ?? 0,
+        startMs: Date.now()
+      }
+    }
+    return {
+      roundIndex: 0,
+      phase: 'display',
+      entered: [],
+      errors: 0,
+      startMs: 0
+    }
   })
 
-  const sessionStartMs = useRef(Date.now())
-  const roundResults = useRef<ArkalonVisionResult['rounds']>([])
+  const sessionStartMs = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
+  const roundResults = useRef<ArkalonVisionResult['rounds']>(
+    savedSession?.roundResults ?? []
+  )
 
   const currentRound: ArkalonVisionRound | undefined =
     data.rounds[roundState.roundIndex]
@@ -66,13 +106,23 @@ export function ArkalonVision({
         JSON.stringify({
           roundIndex: roundState.roundIndex,
           phase: roundState.phase,
+          entered: roundState.entered,
+          errors: roundState.errors,
+          roundResults: roundResults.current,
+          elapsedMs: Date.now() - sessionStartMs.current,
           date: new Date().toISOString().slice(0, 10)
         })
       )
     } catch {
       // localStorage unavailable - silently ignore
     }
-  }, [roundState.roundIndex, roundState.phase, isTrial])
+  }, [
+    roundState.roundIndex,
+    roundState.phase,
+    roundState.entered,
+    roundState.errors,
+    isTrial
+  ])
 
   useEffect(() => {
     if (roundState.phase === 'display' && currentRound) {
@@ -146,6 +196,9 @@ export function ArkalonVision({
             })
           } else {
             // All rounds complete
+            try {
+              localStorage.removeItem('arkalon_daily_recall_session')
+            } catch {}
             const totalElapsedMs = Date.now() - sessionStartMs.current
             onComplete({
               rounds: roundResults.current,

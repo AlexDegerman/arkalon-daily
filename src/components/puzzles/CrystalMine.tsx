@@ -46,10 +46,41 @@ function getCellState(
   return 'empty'
 }
 
+interface SavedDepthsSession {
+  revealedKeys: string[]
+  markedKeys?: string[]
+  chargesUsed: number
+  depositsFound: number
+  elapsedMs?: number
+  date: string
+}
+
+function getSavedDepthsSession(): SavedDepthsSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('arkalon_daily_depths_session')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    if (parsed.date !== today) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   const { play } = useSound()
+  const [savedSession] = useState(() =>
+    isTrial ? null : getSavedDepthsSession()
+  )
   const [isMarking, setIsMarking] = useState(false)
-  const [marked, setMarked] = useState<Set<string>>(new Set())
+  const [marked, setMarked] = useState<Set<string>>(() => {
+    if (savedSession?.markedKeys) {
+      return new Set(savedSession.markedKeys)
+    }
+    return new Set()
+  })
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressFiredRef = useRef(false)
   // Deposits revealed at start are free finds - they never cost a charge
@@ -58,6 +89,9 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
     .filter((c) => c.isDeposit && c.isRevealed && !c.isClue).length
   // Track which non-clue cells have been excavated
   const [revealed, setRevealed] = useState<Set<string>>(() => {
+    if (savedSession?.revealedKeys) {
+      return new Set(savedSession.revealedKeys)
+    }
     const initial = new Set<string>()
     data.grid.flat().forEach((cell) => {
       if (cell.isRevealed && !cell.isClue) {
@@ -67,35 +101,37 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
     return initial
   })
 
-  const [chargesUsed, setChargesUsed] = useState(0)
-    const [depositsFound, setDepositsFound] = useState(
-      () => preRevealedDeposits
-    )
+  const [chargesUsed, setChargesUsed] = useState(
+    () => savedSession?.chargesUsed ?? 0
+  )
+  const [depositsFound, setDepositsFound] = useState(
+    () => savedSession?.depositsFound ?? preRevealedDeposits
+  )
   const [finished, setFinished] = useState(false)
-    const sessionStartRef = useRef(Date.now())
+  const sessionStartRef = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
 
-    useEffect(() => {
-      return () => {
-        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+    }
+  }, [])
+
+  const toggleMark = useCallback(
+    (cell: GridCell) => {
+      if (finished) return
+      if (cell.isClue) return
+      const key = `${cell.row},${cell.col}`
+      if (revealed.has(key)) return
+      const newMarked = new Set(marked)
+      if (newMarked.has(key)) newMarked.delete(key)
+      else {
+        newMarked.add(key)
+        play('mark-tile') // RPS cards.wav sounds like placing a physical flag
       }
-    }, [])
-
-    const toggleMark = useCallback(
-      (cell: GridCell) => {
-        if (finished) return
-        if (cell.isClue) return
-        const key = `${cell.row},${cell.col}`
-        if (revealed.has(key)) return
-        const newMarked = new Set(marked)
-        if (newMarked.has(key)) newMarked.delete(key)
-        else {
-          newMarked.add(key)
-          play('mark-tile') // RPS cards.wav sounds like placing a physical flag
-        }
-        setMarked(newMarked)
-      },
-      [finished, revealed, marked, play]
-    )
+      setMarked(newMarked)
+    },
+    [finished, revealed, marked, play]
+  )
 
   // Persist turn-based state to localStorage
   useEffect(() => {
@@ -105,15 +141,54 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         'arkalon_daily_depths_session',
         JSON.stringify({
           revealedKeys: Array.from(revealed),
+          markedKeys: Array.from(marked),
           chargesUsed,
           depositsFound,
+          elapsedMs: Date.now() - sessionStartRef.current,
           date: new Date().toISOString().slice(0, 10)
         })
       )
     } catch {
       // localStorage unavailable
     }
-  }, [revealed, chargesUsed, depositsFound, isTrial, finished])
+  }, [revealed, marked, chargesUsed, depositsFound, isTrial, finished])
+
+  useEffect(() => {
+    if (isTrial || finished) return
+    if (depositsFound >= data.depositCount || chargesUsed >= data.chargeLimit) {
+      setFinished(true)
+      try {
+        localStorage.removeItem('arkalon_daily_depths_session')
+      } catch {}
+      const totalElapsedMs = Date.now() - sessionStartRef.current
+      const wastedCharges = chargesUsed - (depositsFound - preRevealedDeposits)
+      const maxWaste =
+        data.chargeLimit - data.depositCount + preRevealedDeposits
+      const efficiencyPct =
+        maxWaste > 0
+          ? Math.round(Math.max(0, (1 - wastedCharges / maxWaste) * 100))
+          : depositsFound === data.depositCount
+            ? 100
+            : 0
+
+      onComplete({
+        depositsFound,
+        totalDeposits: data.depositCount,
+        chargesUsed,
+        chargeLimit: data.chargeLimit,
+        totalElapsedMs,
+        efficiencyPct
+      })
+    }
+  }, [
+    depositsFound,
+    chargesUsed,
+    data,
+    isTrial,
+    finished,
+    onComplete,
+    preRevealedDeposits
+  ])
 
   const handleCellClick = useCallback(
     (cell: GridCell) => {
@@ -152,6 +227,9 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
 
       if (allFound || outOfCharges) {
         setFinished(true)
+        try {
+          localStorage.removeItem('arkalon_daily_depths_session')
+        } catch {}
         const totalElapsedMs = Date.now() - sessionStartRef.current
         const wastedCharges =
           newCharges - (newDepositsFound - preRevealedDeposits)

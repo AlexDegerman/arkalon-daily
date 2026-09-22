@@ -55,11 +55,39 @@ function useScale(containerRef: React.RefObject<HTMLDivElement | null>) {
   return scale
 }
 
+interface SavedSurgeSession {
+  startWallTime: number
+  results: SurgeFrenzyResult['nodes']
+  bestCombo: number
+  date: string
+}
+
+function getSavedSurgeSession(): SavedSurgeSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('arkalon_daily_surge_session')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    if (parsed.date !== today) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
   const { play } = useSound()
   const pauseSignal = usePuzzleStore((s) => s.pauseSignal)
   const containerRef = useRef<HTMLDivElement>(null)
   const scale = useScale(containerRef)
+
+  const [savedSession] = useState(() =>
+    isTrial ? null : getSavedSurgeSession()
+  )
+  const startWallTimeRef = useRef<number>(
+    savedSession?.startWallTime ?? Date.now()
+  )
 
   const [isPaused, setIsPaused] = useState(false)
   const [activeNodes, setActiveNodes] = useState<ActiveNode[]>([])
@@ -72,8 +100,10 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     elapsedMs: 0,
     nextSpawnIndex: 0,
     consecutiveHits: 0,
-    bestCombo: 0,
-    results: [] as SurgeFrenzyResult['nodes'],
+    bestCombo: savedSession?.bestCombo ?? 0,
+    results: (savedSession?.results
+      ? [...savedSession.results]
+      : []) as SurgeFrenzyResult['nodes'],
     activeNodeIds: new Set<number>(),
     finished: false
   })
@@ -85,6 +115,9 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     if (s.finished) return
     s.finished = true
     cancelAnimationFrame(rafRef.current)
+    try {
+      localStorage.removeItem('arkalon_daily_surge_session')
+    } catch {}
 
     const hits = s.results.filter((n) => !n.isDecoy && n.reactionMs > 0)
     const misses = s.results.filter(
@@ -148,7 +181,73 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
   // Main rAF loop
   useEffect(() => {
     const s = stateRef.current
-    s.startMs = performance.now()
+    const initialElapsed = isTrial
+      ? 0
+      : Math.max(0, Date.now() - startWallTimeRef.current)
+
+    s.startMs = performance.now() - initialElapsed
+    s.elapsedMs = initialElapsed
+
+    if (savedSession) {
+      s.results = [...savedSession.results]
+      s.bestCombo = savedSession.bestCombo
+      s.consecutiveHits = 0
+    }
+
+    if (initialElapsed >= data.sessionDurationMs) {
+      while (s.results.length < data.nodes.length) {
+        const node = data.nodes[s.results.length]
+        s.results.push({
+          reactionMs: 0,
+          isDecoy: node.isDecoy,
+          consecutiveHitsAtFire: 0
+        })
+      }
+      finishSession()
+      return
+    }
+
+    if (initialElapsed > 0) {
+      const initialActive: ActiveNode[] = []
+      let i = s.results.length
+      while (
+        i < data.nodes.length &&
+        data.nodes[i].spawnAtMs <= initialElapsed
+      ) {
+        const node = data.nodes[i]
+        if (node.spawnAtMs + node.lifetimeMs <= initialElapsed) {
+          s.results.push({
+            reactionMs: 0,
+            isDecoy: node.isDecoy,
+            consecutiveHitsAtFire: 0
+          })
+        } else {
+          s.activeNodeIds.add(node.id)
+          const age = initialElapsed - node.spawnAtMs
+          const progress = age / node.lifetimeMs
+          let radius = node.initialRadius
+          let opacity = 1
+
+          if (node.behavior === 'fading') opacity = 1 - progress
+          if (node.behavior === 'shrinking')
+            radius = node.initialRadius * (1 - progress * 0.5)
+          if (node.behavior === 'growing')
+            radius = node.initialRadius * (1 + progress)
+          if (node.behavior === 'brief')
+            opacity = progress > 0.5 ? 1 - (progress - 0.5) * 2 : 1
+
+          initialActive.push({
+            ...node,
+            expiresAtMs: node.spawnAtMs + node.lifetimeMs,
+            currentRadius: radius,
+            opacity
+          })
+        }
+        i++
+      }
+      s.nextSpawnIndex = i
+      setActiveNodes(initialActive)
+    }
 
     function tick(now: number) {
       if (s.finished) return
@@ -281,9 +380,44 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
 
       s.activeNodeIds.delete(node.id)
       setActiveNodes((prev) => prev.filter((n) => n.id !== node.id))
+
+      if (!isTrial) {
+        try {
+          localStorage.setItem(
+            'arkalon_daily_surge_session',
+            JSON.stringify({
+              startWallTime: startWallTimeRef.current,
+              results: s.results,
+              bestCombo: s.bestCombo,
+              date: new Date().toISOString().slice(0, 10)
+            })
+          )
+        } catch {}
+      }
     },
-    [isPaused, play]
+    [isPaused, play, isTrial]
   )
+
+  useEffect(() => {
+    if (isTrial) return
+    const persist = () => {
+      const s = stateRef.current
+      if (s.finished) return
+      try {
+        localStorage.setItem(
+          'arkalon_daily_surge_session',
+          JSON.stringify({
+            startWallTime: startWallTimeRef.current,
+            results: s.results,
+            bestCombo: s.bestCombo,
+            date: new Date().toISOString().slice(0, 10)
+          })
+        )
+      } catch {}
+    }
+    window.addEventListener('beforeunload', persist)
+    return () => window.removeEventListener('beforeunload', persist)
+  }, [isTrial])
 
   const progressPct = Math.min(
     100,

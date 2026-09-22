@@ -100,6 +100,28 @@ interface SniperChallengeProps {
 
 const TRACK_LOGICAL_WIDTH = 600
 
+interface SavedStrikeSession {
+  shotIndex: number
+  shots: SniperChallengeResult['shots']
+  inFlight: boolean
+  sessionStartTimestamp: number
+  date: string
+}
+
+function getSavedStrikeSession(): SavedStrikeSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('arkalon_daily_strike_session')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    if (parsed.date !== today) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export function SniperChallenge({
   data,
   isTrial,
@@ -121,7 +143,24 @@ export function SniperChallenge({
 
   const scale = trackWidth / TRACK_LOGICAL_WIDTH
 
-  const [shotIndex, setShotIndex] = useState(0)
+  const [savedSession] = useState(() =>
+    isTrial ? null : getSavedStrikeSession()
+  )
+
+  const [initialShots] = useState<SniperChallengeResult['shots']>(() => {
+    if (!savedSession) return []
+    const shots = [...savedSession.shots]
+    if (savedSession.inFlight && shots.length < data.shotCount) {
+      const targetWindowPx = data.shots[shots.length]?.targetWindowPx ?? 40
+      shots.push({
+        deviationPx: targetWindowPx * 2,
+        targetWindowPx
+      })
+    }
+    return shots
+  })
+
+  const [shotIndex, setShotIndex] = useState(() => initialShots.length)
   const [isPaused, setIsPaused] = useState(false)
   const [lastGrade, setLastGrade] = useState<ShotGrade | null>(null)
   const [gradeVisible, setGradeVisible] = useState(false)
@@ -132,9 +171,47 @@ export function SniperChallenge({
   const pauseStartRef = useRef<number>(0)
   const reticleXRef = useRef<number>(0)
   const reticleElRef = useRef<HTMLDivElement>(null)
-  const sessionStartRef = useRef<number>(0)
-  const resultsRef = useRef<SniperChallengeResult['shots']>([])
+  const sessionStartRef = useRef<number>(
+    savedSession?.sessionStartTimestamp
+      ? performance.now() - (Date.now() - savedSession.sessionStartTimestamp)
+      : 0
+  )
+  const sessionStartTimestampRef = useRef<number>(
+    savedSession?.sessionStartTimestamp ?? Date.now()
+  )
+  const resultsRef = useRef<SniperChallengeResult['shots']>(initialShots)
   const finishedRef = useRef(false)
+
+  useEffect(() => {
+    if (initialShots.length >= data.shotCount && !finishedRef.current) {
+      finishedRef.current = true
+      try {
+        localStorage.removeItem('arkalon_daily_strike_session')
+      } catch {}
+      const totalElapsedMs = Math.round(
+        performance.now() - sessionStartRef.current
+      )
+      const shots = resultsRef.current
+      const perfectHits = shots.filter((s) => s.deviationPx < 5).length
+      const excellentHits = shots.filter(
+        (s) => s.deviationPx >= 5 && s.deviationPx < 15
+      ).length
+      const hits = shots.filter((s) => s.deviationPx < s.targetWindowPx).length
+      const accuracyPct = Math.round((hits / shots.length) * 100)
+      const avgDeviation = Math.round(
+        shots.reduce((s, r) => s + r.deviationPx, 0) / shots.length
+      )
+      onComplete({
+        shots,
+        totalElapsedMs,
+        perfectHits,
+        excellentHits,
+        accuracyPct,
+        avgDeviation,
+        totalShots: shots.length
+      })
+    }
+  }, [initialShots.length, data.shotCount, onComplete])
 
   const currentShot: SniperShot | undefined = data.shots[shotIndex]
 
@@ -147,8 +224,7 @@ export function SniperChallenge({
       if (document.hidden && !finishedRef.current) setIsPaused(true)
     }
     document.addEventListener('visibilitychange', onVisibility)
-    return () =>
-      document.removeEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
   // Escape to pause
@@ -175,7 +251,22 @@ export function SniperChallenge({
     pausedMsRef.current = 0
     if (sessionStartRef.current === 0)
       sessionStartRef.current = performance.now()
-  }, [shotIndex])
+
+    if (!isTrial && !finishedRef.current && shotIndex < data.shotCount) {
+      try {
+        localStorage.setItem(
+          'arkalon_daily_strike_session',
+          JSON.stringify({
+            shotIndex,
+            shots: resultsRef.current,
+            inFlight: true,
+            sessionStartTimestamp: sessionStartTimestampRef.current,
+            date: new Date().toISOString().slice(0, 10)
+          })
+        )
+      } catch {}
+    }
+  }, [shotIndex, isTrial, data.shotCount])
 
   // rAF loop - only updates the reticle DOM element directly to avoid React re-renders
   useEffect(() => {
@@ -244,7 +335,7 @@ export function SniperChallenge({
         } else if (grade === 'miss') {
           play('incorrect')
         } else {
-          play('shot-basic') 
+          play('shot-basic')
         }
       }
 
@@ -258,8 +349,27 @@ export function SniperChallenge({
       setTimeout(() => setGradeVisible(false), 500)
 
       const nextIndex = shotIndex + 1
+
+      if (!isTrial) {
+        try {
+          localStorage.setItem(
+            'arkalon_daily_strike_session',
+            JSON.stringify({
+              shotIndex: nextIndex,
+              shots: resultsRef.current,
+              inFlight: false,
+              sessionStartTimestamp: sessionStartTimestampRef.current,
+              date: new Date().toISOString().slice(0, 10)
+            })
+          )
+        } catch {}
+      }
+
       if (nextIndex >= data.shotCount) {
         finishedRef.current = true
+        try {
+          localStorage.removeItem('arkalon_daily_strike_session')
+        } catch {}
         const totalElapsedMs = Math.round(
           performance.now() - sessionStartRef.current
         )

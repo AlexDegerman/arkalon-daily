@@ -221,7 +221,7 @@ A single `UPDATES` array in `src/lib/updates.ts` is the source of truth for all 
 - **Tab guard**: BroadcastChannel detects duplicate tabs and pauses active gameplay; real-time puzzles (Surge, Strike) also pause on tab hide and on Escape.
 - **Pause overlay**: blurs the play surface so no state can be studied while paused. Resumes through a 3-2-1 countdown; paused milliseconds are excluded from all timing metrics.
 - **Submission rate limiting**: 5 submissions per minute per player, with periodic stale-entry cleanup.
-- **Mid-session persistence**: turn-based puzzles (Recall, Cipher, Depths) persist progress locally so a page refresh resumes from where the player left off rather than restarting.
+- **Mid-session persistence**: turn-based puzzles (Recall, Cipher, Depths) resume exact progress to prevent reset exploits, while real-time puzzles (Surge, Strike) track against wall-clock time so refreshing cannot be used to restart timers or dodge shots.
 
 ---
 
