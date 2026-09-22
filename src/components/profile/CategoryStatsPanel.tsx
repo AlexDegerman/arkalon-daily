@@ -86,7 +86,7 @@ export function CategoryStatsPanel({ stats }: CategoryStatsPanelProps) {
             <StatRow
               label="Average Score"
               value={
-                activeStats.daysPlayed >= 3 ? activeStats.averageScore : '—'
+                activeStats.daysPlayed >= 3 ? activeStats.averageScore : '-'
               }
             />
             <StatRow label="Days Played" value={activeStats.daysPlayed} />

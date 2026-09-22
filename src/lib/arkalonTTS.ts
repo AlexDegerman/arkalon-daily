@@ -6,10 +6,23 @@ const COOLDOWN_MS = 500
 
 let cachedVoices: SpeechSynthesisVoice[] = []
 
+function isSpeechSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    'speechSynthesis' in window &&
+    window.speechSynthesis != null &&
+    'SpeechSynthesisUtterance' in window
+  )
+}
+
 function loadVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === 'undefined') return []
-  const v = window.speechSynthesis.getVoices()
-  if (v.length > 0) cachedVoices = v
+  if (!isSpeechSupported()) return []
+  try {
+    const v = window.speechSynthesis.getVoices()
+    if (v && v.length > 0) cachedVoices = v
+  } catch {
+    return []
+  }
   return cachedVoices
 }
 
@@ -48,25 +61,29 @@ function formatArkalonSpeech(text: string): string {
 
 // Call once on first user interaction to unlock SpeechSynthesis on mobile.
 export function unlockArkalon(): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-  window.speechSynthesis.getVoices()
-  const utterance = new SpeechSynthesisUtterance('')
-  utterance.volume = 0
-  window.speechSynthesis.speak(utterance)
+  if (!isSpeechSupported()) return
+  try {
+    window.speechSynthesis.getVoices()
+    const utterance = new SpeechSynthesisUtterance('')
+    utterance.volume = 0
+    window.speechSynthesis.speak(utterance)
+  } catch {}
 }
 
 // Preloads available voices. Must be called after user interaction on some browsers.
 export function primeArkalonVoices(): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-  loadVoices()
-  if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = loadVoices
-  }
+  if (!isSpeechSupported()) return
+  try {
+    loadVoices()
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices
+    }
+  } catch {}
 }
 
 // Speaks text with configured voice, pacing, and cooldown handling.
 export function speakArkalon(text: string, volume = 0.88): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  if (!isSpeechSupported()) return
 
   const now = Date.now()
   if (now - lastSpeakTime < COOLDOWN_MS) return
@@ -83,19 +100,23 @@ export function speakArkalon(text: string, volume = 0.88): void {
       ? `... ${words.join('... ')} ...`
       : `... ${cleaned.replace(/[.,!?]/g, '...')} ...`
 
-  // Cancel any ongoing speech
-  window.speechSynthesis.cancel()
+  try {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel()
 
-  setTimeout(() => {
-    const utterance = new SpeechSynthesisUtterance(mythicalText)
+    setTimeout(() => {
+      try {
+        const utterance = new SpeechSynthesisUtterance(mythicalText)
 
-    utterance.rate = 0.75
-    utterance.pitch = 0.25
-    utterance.volume = volume
+        utterance.rate = 0.75
+        utterance.pitch = 0.25
+        utterance.volume = volume
 
-    const voice = getArkalonVoice()
-    if (voice) utterance.voice = voice
+        const voice = getArkalonVoice()
+        if (voice) utterance.voice = voice
 
-    window.speechSynthesis.speak(utterance)
-  }, 50)
+        window.speechSynthesis.speak(utterance)
+      } catch {}
+    }, 50)
+  } catch {}
 }
