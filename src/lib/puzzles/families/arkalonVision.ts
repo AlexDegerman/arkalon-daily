@@ -69,9 +69,6 @@ function generate(seed: string): PuzzleSeedData {
         sequence.push(glyphPool[nextInt(rng, glyphPool.length)])
       }
 
-      // Round 3 only: apply reverseEntry if configured
-      const isLastRound = roundIdx === baseConfig.seqLengths.length - 1
-
       // Randomized keypad shuffles per-round when enabled
       const roundKeypadOrder = baseConfig.randomizedLayout
         ? shuffle(rng, [...glyphPool])
@@ -148,21 +145,6 @@ registerValidator('arkalon_vision', (data) => {
         return { valid: false, reason: `Glyph "${glyph}" not in active pool` }
       }
     }
-  }
-  // Reject if all rounds have sequence length <= 2 (trivially easy)
-  const allTrivial = fam.rounds.every((r) => r.sequence.length <= 2);
-  if (allTrivial) {
-    return { valid: false, reason: 'All rounds are trivially short' };
-  }
-  // Reject if per-glyph display duration is so short all rounds are below 450ms
-  const allTooFast = fam.rounds.every(
-    (r) => r.displayDurationMs / r.sequence.length < 450
-  );
-  if (allTooFast) {
-    return {
-      valid: false,
-      reason: 'All rounds have per-glyph display duration below 450ms'
-    };
   }
   return { valid: true }
 })

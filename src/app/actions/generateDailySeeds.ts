@@ -59,12 +59,11 @@ export async function generateDailySeeds(
         // Resolves the puzzle family assigned to this category.
         // Each category currently maps to a single family.
         const familyId = CATEGORY_FAMILY_MAP[category]
-        let seedData: import('@/types/puzzle').PuzzleSeedData | null = null
-
+        
         if (registry) {
           const family = registry.get(familyId)
           if (family) {
-            seedData = generateWithValidation(seed, family)
+            generateWithValidation(seed, family)
           }
         }
 

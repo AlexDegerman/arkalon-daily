@@ -7,12 +7,14 @@ export type BGMContext =
   | 'cipher'
   | 'strike'
   | 'depths'
-export interface BGMTrack {
+
+interface BGMTrack {
   id: string
   src: string
   // Menu tracks play through and rotate; puzzle tracks loop seamlessly
   loop: boolean
 }
+
 // One track per puzzle context; the menu rotates through three tracks.
 // Every track is a different genre so contexts stay sonically distinct.
 export const BGM_TRACKS: Record<BGMContext, BGMTrack[]> = {

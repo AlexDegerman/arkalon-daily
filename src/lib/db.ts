@@ -42,17 +42,4 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPg.pgPool = pool
 }
 
-const connStr = process.env.DATABASE_URL
-if (connStr) {
-  try {
-    const url = new URL(connStr)
-    const searchPath = url.searchParams.get('search_path')
-    if (searchPath) {
-      pool.on('connect', (client) => {
-        client.query(`SET search_path TO "${searchPath}", public`)
-      })
-    }
-  } catch {}
-}
-
 export default pool

@@ -408,16 +408,12 @@ export function generateRound(
   switch (generator) {
     case 'alternating':
       return genAlternating(rng, stepsShown, choiceCount)
-    case 'rotation_mirror':
-      return genRotationMirror(rng, stepsShown, choiceCount)
     case 'dual_variable':
       return genDualVariable(rng, stepsShown, choiceCount)
     case 'tri_variable':
       return genTriVariable(rng, stepsShown, choiceCount)
     case 'rule_discovery':
       return genRuleDiscovery(rng, choiceCount)
-    case 'grid_transform':
-      return genGridTransform(rng, stepsShown, choiceCount)
     case 'constrained_choice':
       return genConstrainedChoice(rng, choiceCount)
     default:

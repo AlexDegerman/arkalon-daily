@@ -27,7 +27,7 @@ export type SoundKey =
   | 'streak-100'
   | 'streak-365'
 
-export const SOUND_MAP: Record<SoundKey, string> = {
+const SOUND_MAP: Record<SoundKey, string> = {
   correct: '/sounds/correct.wav',
   incorrect: '/sounds/incorrect.wav',
   'sequence-tick': '/sounds/sequence-tick.mp3',
@@ -187,17 +187,5 @@ export function useSound() {
     audio.play().catch(() => {})
   }, [])
 
-  // Layer a second sound on top without interrupting the primary pool
-  const playLayer = useCallback((key: SoundKey) => {
-    if (!sfxEnabledRef.current) return
-    const vol = Math.min(
-      1,
-      sfxVolumeRef.current * (VOLUME_MULTIPLIERS[key] ?? 1)
-    )
-    const audio = new Audio(SOUND_MAP[key])
-    audio.volume = vol
-    audio.play().catch(() => {})
-  }, [])
-
-  return { play, playLayer }
+  return { play }
 }

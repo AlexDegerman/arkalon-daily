@@ -56,10 +56,3 @@ export const CATEGORY_ORDER: PuzzleCategory[] = [
   'strike',
   'depths'
 ]
-export const CATEGORY_BORDER_MAP: Record<PuzzleCategory, string> = {
-  recall: 'border-[#39ff8a]',
-  surge: 'border-[#00d4ff]',
-  cipher: 'border-[#a78bfa]',
-  strike: 'border-[#ff3b5c]',
-  depths: 'border-[#4fc3ff]'
-}

@@ -39,21 +39,6 @@ body {
   box-sizing: border-box;
 }
 
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.82; }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-pulse-subtle {
-    animation: none;
-  }
-}
-
 @keyframes title-pulse-breathe {
   0%, 100% { 
     filter: drop-shadow(0 0 3px rgba(0, 255, 102, 0.8)) drop-shadow(0 0 10px rgba(0, 255, 102, 0.35)); 
@@ -321,23 +306,6 @@ body {
   100% { background-position: 300% 50%; }
 }
 
-@keyframes phantasm-shockwave-expand {
-  0% {
-    transform: translate(-50%, -50%) scale(0.35) rotate(0deg);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 0.85;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.4) rotate(120deg);
-    opacity: 0;
-  }
-}
-
 .g-str {
   font-weight: 900;
   display: inline-block;
@@ -370,7 +338,7 @@ body {
   50%  { background-position: 100% center;  filter: drop-shadow(0 0 2px rgba(0, 50, 150, 0.8)) drop-shadow(0 0 15px #cceeff); }
   100% { background-position: 200% center;  filter: drop-shadow(0 0 2px rgba(0, 50, 150, 0.5)) drop-shadow(0 0 5px #99ccff); }
 }
-.g-uvg, .event-header-lunar {
+.g-uvg {
   font-weight: 900;
   display: inline-block;
   background: linear-gradient(135deg, #224488 0%, #ffffff 50%, #224488 100%);
@@ -425,56 +393,6 @@ body {
   }
 }
 
-@keyframes dune-mirage-drift {
-  0%, 100% {
-    transform: translate3d(-5px, 0, 0) skewX(8deg);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translate3d(-15px, 0, 0) skewX(13deg);
-    opacity: 0.65;
-  }
-}
-
-@keyframes dune-jetstream-flow {
-  0% {
-    background-position: 
-      0px 0px,
-      0px 0px,
-      0px 0px,
-      0px bottom,
-      0px bottom,
-      0px top, 
-      0px bottom;
-    transform: scaleY(0.95) skewX(-11deg);
-    opacity: 0.65;
-  }
-  50% {
-    background-position: 
-      -75px -75px,
-      -100px -100px,
-      -90px -90px,
-      -60px bottom,
-      -80px bottom,
-      0px top, 
-      0px bottom;
-    transform: scaleY(1.05) skewX(-13deg);
-    opacity: 0.95;
-  }
-  100% {
-    background-position: 
-      -150px -150px,
-      -200px -200px,
-      -180px -180px,
-      -120px bottom,
-      -160px bottom,
-      0px top, 
-      0px bottom;
-    transform: scaleY(0.95) skewX(-11deg);
-    opacity: 0.65;
-  }
-}
-
 .g-qntr {
   font-weight: 900;
   display: inline-block;
@@ -514,28 +432,7 @@ body {
     background-position: 100% 50%;
   }
 }
-@keyframes solar-beam-stream {
-  0%, 100% {
-    opacity: 0.35;
-    transform: translateX(-50%) scaleX(0.9);
-  }
-  50% {
-    opacity: 0.85;
-    transform: translateX(-50%) scaleX(1.12);
-  }
-}
-@keyframes solar-crown-flare {
-  0%, 100% {
-    transform: translateX(-50%) scale(1.0);
-    background-position: 0% 50%;
-    filter: brightness(1) contrast(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.06);
-    background-position: 100% 50%;
-    filter: brightness(1.55) contrast(1.25);
-  }
-}
+
 .g-ttr {
   font-weight: 900;
   display: inline-block;
@@ -556,32 +453,7 @@ body {
   0%   { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
 }
-@keyframes abyssal-biolum-pulse {
-  0%, 100% {
-    transform: translate(-50%, -50%) scale(0.95);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.08);
-    opacity: 0.85;
-  }
-}
-@keyframes abyssal-bubbles-sink {
-  0% {
-    transform: translateY(-8px) translateX(-2px) scale(0.65);
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.95;
-  }
-  80% {
-    opacity: 0.95;
-  }
-  100% {
-    transform: translateY(22px) translateX(4px) scale(1.2);
-    opacity: 0;
-  }
-}
+
 .g-nvg {
   font-weight: 900;
   display: inline-block;
@@ -628,42 +500,6 @@ body {
   }
 }
 
-/* 2.5s heavy vertical breathing loop */
-@keyframes apexion-background-pyramid {
-  0%, 100% {
-    transform: translateX(-50%) scaleY(0.9);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translateX(-50%) scaleY(1.1);
-    opacity: 0.65;
-  }
-}
-
-/* High-frequency, tight-proximity vibration of the micro-shatter swarm */
-@keyframes tqg-micro-shatter-swarm {
-  0%, 100% {
-    transform: translate3d(0, -2px, 0) scale(0.95);
-    opacity: 0.55;
-  }
-  20% {
-    transform: translate3d(-2px, 1px, 0) scale(1.03);
-    opacity: 0.95;
-  }
-  40% {
-    transform: translate3d(1px, -2px, 0) scale(0.98);
-    opacity: 0.7;
-  }
-  60% {
-    transform: translate3d(-1px, -1px, 0) scale(1.02);
-    opacity: 0.85;
-  }
-  80% {
-    transform: translate3d(2px, 2px, 0) scale(0.97);
-    opacity: 0.9;
-  }
-}
-
 .g-tqg {
   font-weight: 900;
   display: inline-block;
@@ -694,28 +530,8 @@ body {
     tqg-kinetic-vibe 2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }
 
-/* Diagonally-scrolling matrix grid & breathing holographic scale */
-@keyframes tqg-hologram-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0.92);
-    background-position: 0px 0px, 0px 0px, center;
-    opacity: 0.45;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.08);
-    background-position: 8px 8px, -8px -8px, center;
-    opacity: 0.85;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(0.92);
-    background-position: 16px 16px, -16px -16px, center;
-    opacity: 0.45;
-  }
-}
 /* NOVEMTRIGINTILLION */
 @keyframes ntg-text-flow { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
-@keyframes ntg-ring-cw   { from { transform: translate(-50%,-50%) rotate(0deg); } to { transform: translate(-50%,-50%) rotate(360deg); } }
-@keyframes ntg-ring-ccw  { from { transform: translate(-50%,-50%) rotate(0deg); } to { transform: translate(-50%,-50%) rotate(-360deg); } }
 
 .g-ntg {
   font-weight: 900; display: inline-block; position: relative; isolation: isolate;
@@ -733,26 +549,7 @@ body {
   0%   { background-position-x: 0%; }
   100% { background-position-x: 200%; }
 }
-@keyframes tqg-crown-hover {
-  0%, 100% {
-    transform: translateX(-50%) translateY(0) scale(1);
-    filter: drop-shadow(0 0.5px 0px #78350f) drop-shadow(0 0 3px rgba(255, 215, 0, 0.9));
-  }
-  50% {
-    transform: translateX(-50%) translateY(-3px) scale(1.05);
-    filter: drop-shadow(0 0.5px 0px #78350f) drop-shadow(0 0 6px rgba(255, 215, 0, 1));
-  }
-}
-@keyframes tqg-coin-shimmer {
-  0%, 100% {
-    background-position: 0% 50%;
-    opacity: 0.92;
-  }
-  50% {
-    background-position: 100% 50%;
-    opacity: 1;
-  }
-}
+
 .g-tqgs {
   font-weight: 900;
   display: inline-block;
@@ -795,28 +592,6 @@ body {
 /* Purple-to-magenta crystalline gradient, floating shard reflections */
 @keyframes dqg-sweep {
   to { background-position-x: 200%; }
-}
-
-@keyframes dqg-shard1 {
-  0%, 100% { 
-    transform: rotateZ(0deg) translateY(0px) scale(1); 
-    filter: drop-shadow(0 0.5px 0px #4a044e) brightness(1); 
-  }
-  50% { 
-    transform: rotateZ(18deg) translateY(-4px) scale(1.08); 
-    filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.65)) brightness(1.22); 
-  }
-}
-
-@keyframes dqg-shard2 {
-  0%, 100% { 
-    transform: rotateZ(0deg) translateY(0px) scale(1); 
-    filter: drop-shadow(0 0.5px 0px #4a044e) brightness(1); 
-  }
-  35% { 
-    transform: rotateZ(-22deg) translateY(-3px) scale(1.05); 
-    filter: drop-shadow(0 1.5px 3px rgba(255, 215, 0, 0.55)) brightness(1.25); 
-  }
 }
 
 .g-dqgs {
@@ -874,12 +649,6 @@ body {
 }
 
 /*  Vessel Lock */
-/* Steel-blue engraved characters, rotating gold ring, amber pulse */
-@keyframes qnqg-spin {
-  0%   { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
 @keyframes qnqg-amber-sweep {
   0%   { background-position: -200% 0, 0 0, 0 0; }
   100% { background-position: 300% 0, 0 0, 0 0; }

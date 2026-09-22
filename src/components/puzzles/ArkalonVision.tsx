@@ -10,7 +10,7 @@ import type {
   ArkalonVisionRound
 } from '@/lib/puzzles/families/arkalonVision'
 
-type RoundPhase = 'display' | 'input' | 'feedback' | 'complete'
+type RoundPhase = 'display' | 'input' | 'feedback'
 
 interface RoundState {
   roundIndex: number

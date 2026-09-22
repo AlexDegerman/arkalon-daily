@@ -49,10 +49,6 @@ export function useBGM() {
     }, intervalMs)
   }, [])
 
-  const switchContext = useCallback((newContext: BGMContext) => {
-    useMusicStore.getState().setContext(newContext)
-  }, [])
-
   useEffect(() => {
     if (!musicEnabled) {
       stopCurrent(false)
@@ -129,5 +125,4 @@ export function useBGM() {
     audio.volume = musicEnabled ? musicVolume : 0
   }, [musicVolume, musicEnabled])
 
-  return { switchContext }
 }
