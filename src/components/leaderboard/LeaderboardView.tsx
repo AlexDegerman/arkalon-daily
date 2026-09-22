@@ -134,8 +134,8 @@ export function LeaderboardView() {
         ))}
       </div>
       {/* Summary Subtext */}
-      <div className="flex items-center justify-between text-xs font-mono text-text-muted px-1 mb-2">
-        <span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] sm:text-xs font-mono text-text-muted px-1 mb-2">
+        <span className="truncate">
           {period === 'daily'
             ? activeCategory === 'total'
               ? 'TODAY · ALL CATEGORIES'
@@ -146,7 +146,7 @@ export function LeaderboardView() {
           {isAggregate && result?.threshold ? ` · MIN ${result.threshold}` : ''}
         </span>
         {result?.totalPlayers !== undefined && result.totalPlayers > 0 ? (
-          <span>
+          <span className="shrink-0">
             {result.totalPlayers.toLocaleString()}{' '}
             {isAggregate ? 'RANKED' : 'PLAYERS'}
             {result.playerRank != null && (
@@ -178,18 +178,7 @@ export function LeaderboardView() {
           </p>
         </div>
       )}
-      {/* Aggregate column header */}
-      {isAggregate && entries.length > 0 && (
-        <div className="flex items-center gap-2 px-3 pb-1 text-[9px] font-mono uppercase tracking-wider text-text-muted">
-          <span className="w-7 shrink-0" />
-          <span className="flex-1">Player</span>
-          <span className="w-10 shrink-0 text-right">Avg</span>
-          <span className="w-10 shrink-0 text-right">Clr</span>
-          <span className="w-8 shrink-0 text-right">Best</span>
-          <span className="w-10 shrink-0 text-right">Pts</span>
-          <span className="w-9 shrink-0 text-right">Strk</span>
-        </div>
-      )}
+
       {/* Main Content Area */}
       {loading ? (
         <div className="flex justify-center py-16 rounded-xl border border-border-subtle bg-surface-panel">
@@ -284,31 +273,69 @@ export function LeaderboardView() {
         )
       ) : (
         /* Entry List */
-        <div
-          className="rounded-xl border border-border-subtle bg-bg-base/90 p-2 flex flex-col gap-1 shadow-lg"
-          role="list"
-          aria-label={`${cat.displayName} leaderboard`}
-        >
-          {entries.map((entry) => (
-            <div key={`${entry.rank}-${entry.displayName}`} role="listitem">
-              <LeaderboardRow
-                entry={entry}
-                period={period}
-                scope={activeCategory}
-                showSeparator={false}
-              />
-            </div>
-          ))}
-          {showPlayerSeparate && (
-            <div role="listitem">
-              <LeaderboardRow
-                entry={playerEntry as LeaderboardEntry}
-                period={period}
-                scope={activeCategory}
-                showSeparator={true}
-              />
-            </div>
-          )}
+        <div className="rounded-xl border border-border-subtle bg-bg-base/90 overflow-hidden shadow-lg">
+          <div className="overflow-x-auto">
+            <table
+              className="w-full text-left border-collapse"
+              aria-label={`${cat.displayName} leaderboard`}
+            >
+              <thead className="border-b border-border-subtle bg-surface-panel/60 text-[10px] font-mono uppercase text-text-muted">
+                <tr>
+                  <th className="py-2.5 px-2.5 sm:px-3 w-8 sm:w-10 text-center font-bold">
+                    #
+                  </th>
+                  <th className="py-2.5 px-2 sm:px-3 font-bold">Player</th>
+                  {isAggregate ? (
+                    <>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-14">
+                        Avg
+                      </th>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-12">
+                        Clr
+                      </th>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-12">
+                        Best
+                      </th>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-16">
+                        Pts
+                      </th>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-14">
+                        Strk
+                      </th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-20">
+                        Time
+                      </th>
+                      <th className="hidden min-[600px]:table-cell py-2.5 px-3 text-right font-bold w-16">
+                        Score
+                      </th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle/30">
+                {entries.map((entry) => (
+                  <LeaderboardRow
+                    key={`${entry.rank}-${entry.displayName}`}
+                    entry={entry}
+                    period={period}
+                    scope={activeCategory}
+                    showSeparator={false}
+                  />
+                ))}
+                {showPlayerSeparate && (
+                  <LeaderboardRow
+                    entry={playerEntry as LeaderboardEntry}
+                    period={period}
+                    scope={activeCategory}
+                    showSeparator={true}
+                  />
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

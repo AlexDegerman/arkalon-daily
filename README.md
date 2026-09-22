@@ -228,7 +228,7 @@ A single `UPDATES` array in `src/lib/updates.ts` is the source of truth for all 
 ## Mobile & PWA Experience
 
 - **Progressive Web App**: installable directly from modern browsers on mobile (iOS Safari via Add to Home Screen, Android Chrome via Install prompt) and desktop (Chrome, Edge, Brave) to launch in a standalone, borderless window with custom icons.
-- **Ultra-compact viewport resilience (320px)**: the mobile layout scales down to 320px viewports with zero horizontal overflow, dynamic text scaling on category titles, touch-padded hitboxes, and an integrated bottom telemetry bar.
+- **Ultra-compact viewport resilience (320px)**: the mobile layout scales down to 320px viewports with zero horizontal overflow, dynamic text scaling on category titles, touch-padded hitboxes, and an integrated bottom telemetry bar. Includes an adaptive, high-density leaderboard that surfaces inline sub-row telemetry on mobile with zero nickname truncation, expanding cleanly into dedicated multi-column table layouts on wider viewports.
 - **Adaptive wide-screen layout**: scales from tablet through desktop to ultra-wide (1152px+), transforming into a 50/50 split pairing the interactive puzzle rack with a Mission Control telemetry suite showing the live UTC countdown clock, daily clearance pips, and discipline breakdown.
 - **Input parity**: touch and keyboard controls are first-class citizens (Space/Enter to fire or select, Escape to pause, focusable glyph keypad buttons).
 
