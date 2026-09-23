@@ -21,48 +21,42 @@ export function RecoveryTutorialOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="recovery-tutorial-title"
     >
-      <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface-panel p-6 text-center shadow-2xl">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent-recall/10 text-2xl">
+      <div className="w-full max-w-xs rounded-xl border border-border-subtle bg-surface-panel p-5 text-center shadow-2xl animate-[fade-in_0.15s_ease-out_both]">
+        <div className="mx-auto mb-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-accent-recall/10 border border-accent-recall/30 text-lg">
           🛡️
         </div>
 
         <h2
           id="recovery-tutorial-title"
-          className="mb-2 text-base font-semibold tracking-wider text-text-primary"
+          className="mb-1.5 text-sm font-bold tracking-wide text-text-primary"
         >
           Protect Your Streaks
         </h2>
 
-        <p className="mb-3 text-xs text-text-muted leading-relaxed">
-          Arkalon Daily doesn&apos;t use passwords. Your profile, stats, and
-          streaks are secured by your{' '}
-          <strong>Arkalon Core Recovery Code</strong> on the Network Hub.
-        </p>
-
-        <p className="mb-5 text-xs text-text-muted leading-relaxed">
-          Save your recovery code so you can restore your account on any device
-          if your browser data is ever cleared.
+        <p className="mb-4 text-[11px] text-text-muted leading-relaxed">
+          No passwords required. Save your <strong>Recovery Code</strong> on the
+          Network to restore your streaks if your browser data is ever cleared.
         </p>
 
         <div className="flex flex-col gap-2">
           <a
             href={`https://network.rpsleague.fi/settings?tab=identity&returnTo=${encodeURIComponent(returnUrl)}`}
             onClick={onDismiss}
-            className="w-full rounded-lg bg-accent-recall px-4 py-3 text-xs font-bold tracking-wider text-bg-base transition-opacity hover:opacity-90"
+            className="w-full rounded-lg bg-accent-recall py-2.5 text-xs font-black tracking-wider text-bg-base font-mono transition-opacity hover:opacity-90"
           >
-            VIEW RECOVERY CODE ON HUB &rarr;
+            VIEW CODE ON NETWORK &rarr;
           </a>
           <button
             onClick={onDismiss}
             autoFocus
-            className="w-full rounded-lg border border-border-subtle px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-primary transition-colors"
+            className="w-full py-1.5 text-[11px] font-medium text-text-muted hover:text-text-primary transition-colors cursor-pointer"
           >
-            I ALREADY SAVED IT
+            Not now
           </button>
         </div>
       </div>
