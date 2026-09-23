@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, Flame, Radio, CheckCircle2, AlertCircle } from 'lucide-react'
 import { CategoryGrid } from '@/components/home/CategoryGrid'
+import { ArkalonNetworkWidget } from '@/components/ui/ArkalonNetworkWidget'
 import { getCategoryStatuses } from '@/app/actions/getCategoryStatuses'
 import { CATEGORY_ORDER, CATEGORIES } from '@/constants/categories'
 import type { CategoryStatus } from '@/types/puzzle'
@@ -265,6 +266,9 @@ export function HomeContent() {
           ONE ATTEMPT PER PUZZLE • UTC 00:00 SEED SYNC
         </p>
       </div>
+
+      {/* Arkalon Network Portal Link Widget */}
+      <ArkalonNetworkWidget />
     </main>
   )
 }

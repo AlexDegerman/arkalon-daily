@@ -6,7 +6,7 @@ A browser-based daily puzzle platform offering five optional daily puzzles, each
 
 > **Development Status:** Arkalon Daily is live in production and fully operational. The platform launched with its complete feature set: five puzzle categories, deterministic challenge generation, server-authoritative scoring, leaderboards, streaks, identity, share cards, and audio systems all in place. Active development continues with additional puzzle families, expanded leaderboard tiers, and deeper Arkalon Network integration on the roadmap.
 
-> **Part of the Arkalon Network:** Arkalon Daily is one application in the wider [Arkalon universe](https://network.rpsleague.fi/), a multi-app ecosystem sharing a common identity layer, visual language, and cross-app recommendation surface.
+> **Part of the Arkalon Network:** Arkalon Daily is one application in the wider [Arkalon universe](https://network.rpsleague.fi/), a multi-app ecosystem sharing a common identity layer, visual language, and cross-app recommendation surface. A floating, collapsible network beacon links players directly to the Arkalon AI Oracle, the feedback portal, and other ecosystem titles, broadcasting release and update alerts that automatically clear once explored.
 
 <!-- TODO(record): ./assets/preview_showcase.gif
 <p align="center">

@@ -77,7 +77,7 @@ export function LeaderboardRow({
                     : `/profile/${entry.shortId}`
                 }
                 className={[
-                  'font-bold text-xs sm:text-sm break-words transition-colors hover:underline underline-offset-4',
+                  'font-bold text-xs sm:text-sm wrap-break-word transition-colors hover:underline underline-offset-4',
                   entry.isCurrentPlayer
                     ? 'text-accent-recall'
                     : 'text-text-primary hover:text-accent-recall'
