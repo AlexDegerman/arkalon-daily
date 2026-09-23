@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useCallback } from 'react'
+import { Copy, Check } from 'lucide-react'
 import type {
   PlayerProfile,
   CategoryStats,
@@ -22,6 +24,7 @@ export function ProfileView({
   stats,
   isOwnProfile = true
 }: ProfileViewProps) {
+  const [copied, setCopied] = useState(false)
   const averageScores = Object.fromEntries(
     stats
       .filter((s) => s.daysPlayed >= 3)
@@ -31,18 +34,49 @@ export function ProfileView({
   const totalActiveStreaks = stats.filter((s) => s.currentStreak > 0).length
   const displayName = profile.displayName ?? 'Player'
 
+  const handleCopyLink = useCallback(async () => {
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/profile/${profile.id}`
+        : `https://daily.rpsleague.fi/profile/${profile.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }, [profile.id])
+
   return (
     <div className="mx-auto flex w-full max-w-180 flex-col gap-3 sm:gap-4 px-3 sm:px-4 py-3 sm:py-5 pb-16">
       {/* Identity Card */}
       <div className="rounded-xl border border-border-subtle bg-surface-panel p-4">
-        <div className="flex items-center gap-3">
-          <PlayerAvatar playerId={profile.id} displayName={displayName} />
-          <div>
-            <p className="font-semibold text-text-primary">{displayName}</p>
-            <p className="mt-1 text-xs text-text-muted">
-              Playing since {formatDateTime(profile.createdAt)}
-            </p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <PlayerAvatar playerId={profile.id} displayName={displayName} />
+            <div className="min-w-0">
+              <p className="font-semibold text-text-primary truncate">
+                {displayName}
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Playing since {formatDateTime(profile.createdAt)}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleCopyLink}
+            title="Copy Profile Link"
+            aria-label="Copy Profile Link"
+            className="shrink-0 flex items-center justify-center p-2 rounded-lg border border-border-subtle bg-bg-base/70 text-text-muted hover:text-text-primary hover:border-accent-recall transition-colors cursor-pointer"
+          >
+            {copied ? (
+              <span className="flex items-center gap-1 text-[10px] font-mono text-accent-recall font-bold">
+                <Check size={14} />
+                <span className="hidden min-[360px]:inline">COPIED</span>
+              </span>
+            ) : (
+              <Copy size={15} />
+            )}
+          </button>
         </div>
         {(totalDaysPlayed > 0 ||
           totalActiveStreaks > 0 ||
