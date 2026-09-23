@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { CategoryStats, PuzzleCategory } from '@/types/puzzle'
 import { CATEGORIES, CATEGORY_ORDER } from '@/constants/categories'
+import { getScoreTierClass } from '@/lib/format'
 
 interface CategoryStatsPanelProps {
   stats: CategoryStats[]
@@ -82,6 +83,35 @@ export function CategoryStatsPanel({ stats }: CategoryStatsPanelProps) {
       >
         {activeStats ? (
           <>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-xs uppercase tracking-wider text-text-muted">
+                Today&apos;s Result
+              </span>
+              {activeStats.todayResult ? (
+                <span className="flex items-center gap-2 font-mono text-sm font-bold">
+                  <span
+                    className={getScoreTierClass(activeStats.todayResult.score)}
+                  >
+                    {activeStats.todayResult.score} PTS
+                  </span>
+                  <span
+                    className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                      activeStats.todayResult.status === 'solved'
+                        ? 'bg-status-success/15 text-status-success border border-status-success/30'
+                        : 'bg-status-fail/15 text-status-fail border border-status-fail/30'
+                    }`}
+                  >
+                    {activeStats.todayResult.status === 'solved'
+                      ? '✓ PASS'
+                      : '✗ FAIL'}
+                  </span>
+                </span>
+              ) : (
+                <span className="font-mono text-xs text-text-muted uppercase">
+                  Not played yet
+                </span>
+              )}
+            </div>
             <StatRow label="Best Score" value={activeStats.bestScore} />
             <StatRow
               label="Average Score"

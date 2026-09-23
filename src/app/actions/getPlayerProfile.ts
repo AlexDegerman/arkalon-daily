@@ -4,6 +4,7 @@ import 'server-only'
 
 import { z } from 'zod'
 import pool from '@/lib/db'
+import { getUtcDateString } from '@/lib/puzzles/hmac'
 import type { PlayerProfile, CategoryStats } from '@/types/puzzle'
 import type { PuzzleCategory } from '@/types/puzzle'
 import { CATEGORY_ORDER } from '@/constants/categories'
@@ -163,6 +164,24 @@ export async function getPlayerProfile(
         }
       }
 
+      const todayUtc = getUtcDateString()
+      const todayRow = await client.query<{
+        normalized_score: number
+        status: string
+      }>(
+        `SELECT normalized_score, status
+          FROM daily_results
+          WHERE player_id = $1 AND category = $2 AND puzzle_date = $3`,
+        [activePlayerId, category, todayUtc]
+      )
+      const todayResult =
+        todayRow.rows.length > 0
+          ? {
+              score: todayRow.rows[0].normalized_score,
+              status: todayRow.rows[0].status as 'solved' | 'failed'
+            }
+          : null
+
       stats.push({
         category: category as PuzzleCategory,
         bestScore: agg.best_score ?? 0,
@@ -172,7 +191,8 @@ export async function getPlayerProfile(
         daysPlayed,
         currentStreak: streak.current_streak,
         longestStreak: streak.longest_streak,
-        globalPercentile
+        globalPercentile,
+        todayResult
       })
     }
 

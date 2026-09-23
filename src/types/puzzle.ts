@@ -153,6 +153,10 @@ export interface CategoryStats {
   currentStreak: number
   longestStreak: number
   globalPercentile: number | null
+  todayResult?: {
+    score: number
+    status: 'solved' | 'failed'
+  } | null
 }
 
 export interface ShareResult {
