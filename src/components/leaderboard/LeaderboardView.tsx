@@ -29,11 +29,17 @@ function getPlayerId(): string | null {
   }
 }
 
-export function LeaderboardView() {
+interface LeaderboardViewProps {
+  initialResult?: LeaderboardResult | null
+}
+
+export function LeaderboardView({ initialResult }: LeaderboardViewProps) {
   const [activeCategory, setActiveCategory] =
     useState<LeaderboardScope>('recall')
   const [period, setPeriod] = useState<LeaderboardPeriod>('daily')
-  const [result, setResult] = useState<LeaderboardResult | null>(null)
+  const [result, setResult] = useState<LeaderboardResult | null>(
+    initialResult ?? null
+  )
   const [loading, setLoading] = useState(false)
 
   const loadLeaderboard = useCallback(
@@ -48,8 +54,12 @@ export function LeaderboardView() {
   )
 
   useEffect(() => {
+    // Skip initial fetch if pre-rendered from server props
+    if (initialResult && activeCategory === 'recall' && period === 'daily') {
+      return
+    }
     loadLeaderboard(activeCategory, period)
-  }, [activeCategory, period, loadLeaderboard])
+  }, [activeCategory, period, loadLeaderboard, initialResult])
 
   const cat =
     activeCategory === 'total' ? TOTAL_TAB : CATEGORIES[activeCategory]
@@ -133,7 +143,7 @@ export function LeaderboardView() {
           </button>
         ))}
       </div>
-      
+
       {/* Below-threshold placeholder for the current player */}
       {isAggregate && result?.success && result.playerQualified === false && (
         <div className="rounded-lg border border-border-subtle bg-surface-panel/90 px-3 py-2 mb-2 flex flex-col gap-1 font-mono text-[10px]">

@@ -10,12 +10,26 @@ import type { PlayerProfile, CategoryStats } from '@/types/puzzle'
 
 type PagePhase = 'loading' | 'loaded' | 'error'
 
-export function ProfileClient() {
+interface ProfileClientProps {
+  initialProfile?: PlayerProfile | null
+  initialStats?: CategoryStats[]
+}
+
+export function ProfileClient({
+  initialProfile,
+  initialStats = []
+}: ProfileClientProps) {
   const router = useRouter()
-  const [phase, setPhase] = useState<PagePhase>('loading')
-  const [profile, setProfile] = useState<PlayerProfile | null>(null)
-  const [stats, setStats] = useState<CategoryStats[]>([])
-  const [showTutorial, setShowTutorial] = useState(false)
+  const [phase, setPhase] = useState<PagePhase>(
+    initialProfile ? 'loaded' : 'loading'
+  )
+  const [profile, setProfile] = useState<PlayerProfile | null>(
+    initialProfile ?? null
+  )
+  const [stats, setStats] = useState<CategoryStats[]>(initialStats)
+  const [showTutorial, setShowTutorial] = useState(
+    initialProfile ? !initialProfile.recoveryTutorialShown : false
+  )
 
   function getPlayerId(): string | null {
     try {
@@ -26,6 +40,8 @@ export function ProfileClient() {
   }
 
   useEffect(() => {
+    if (initialProfile) return
+
     const localId = getPlayerId()
 
     getPlayerProfile(localId).then((res) => {
@@ -49,7 +65,7 @@ export function ProfileClient() {
 
       setPhase('loaded')
     })
-  }, [])
+  }, [initialProfile])
 
   const handleTutorialDismiss = useCallback(async () => {
     setShowTutorial(false)

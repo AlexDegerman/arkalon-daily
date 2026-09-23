@@ -169,63 +169,107 @@ export async function getLeaderboard(
   return getAggregateLeaderboard(validPlayerId, category, period, puzzleDate)
 }
 
+interface CachedDailyBoard {
+  entries: LeaderboardEntry[]
+  totalPlayers: number
+  familyIndex?: number
+  expires: number
+}
+const dailyBoardCache = new Map<string, CachedDailyBoard>()
+
 async function getDailyCategoryLeaderboard(
   validPlayerId: string | null,
   category: PuzzleCategory,
   puzzleDate?: string
 ): Promise<LeaderboardResult> {
   const date = puzzleDate ?? getUtcDateString()
-  const client = await pool.connect()
+  const cacheKey = `daily:${category}:${date}`
+  const cached = dailyBoardCache.get(cacheKey)
+
   try {
-    // Total player count for this puzzle
-    const countRow = await client.query<{ total: string }>(
-      `SELECT COUNT(*) AS total
-        FROM daily_results
-        WHERE puzzle_date = $1 AND category = $2`,
-      [date, category]
-    )
-    const totalPlayers = parseInt(countRow.rows[0]?.total ?? '0', 10)
+    let boardEntries: LeaderboardEntry[]
+    let totalPlayers: number
+    let familyIndex: number | undefined
 
-    // Top 50 entries ordered by score desc, elapsed asc
-    const topRows = await client.query<{
-      player_id: string
-      short_id: string | null
-      display_name: string | null
-      normalized_score: number
-      elapsed_ms: number
-    }>(
-      `SELECT dr.player_id, p.short_id, p.display_name,
-              dr.normalized_score, dr.elapsed_ms
-        FROM daily_results dr
-        JOIN players p ON p.id = dr.player_id
-        WHERE dr.puzzle_date = $1 AND dr.category = $2
-        ORDER BY dr.normalized_score DESC, dr.elapsed_ms ASC
-        LIMIT 50`,
-      [date, category]
-    )
-    const entries: LeaderboardEntry[] = topRows.rows.map((row, i) => ({
-      rank: i + 1,
-      playerId: row.player_id,
-      shortId: row.short_id ?? row.player_id.slice(0, 8),
-      displayName: row.display_name ?? 'Player',
-      normalizedScore: row.normalized_score,
-      elapsedMs: row.elapsed_ms,
-      avgScore: null,
-      clears: null,
-      bestScore: null,
-      totalPoints: null,
-      streakDays: null,
-      clearsByCategory: null,
-      isCurrentPlayer: validPlayerId ? row.player_id === validPlayerId : false
-    }))
+    if (cached && cached.expires > Date.now()) {
+      boardEntries = cached.entries
+      totalPlayers = cached.totalPlayers
+      familyIndex = cached.familyIndex
+    } else {
+      // Execute count, top-50, and puzzle info in parallel
+      const [countRow, topRows, puzzleRow] = await Promise.all([
+        pool.query<{ total: string }>(
+          `SELECT COUNT(*) AS total
+           FROM daily_results
+           WHERE puzzle_date = $1 AND category = $2`,
+          [date, category]
+        ),
+        pool.query<{
+          player_id: string
+          short_id: string | null
+          display_name: string | null
+          normalized_score: number
+          elapsed_ms: number
+        }>(
+          `SELECT dr.player_id, p.short_id, p.display_name,
+                  dr.normalized_score, dr.elapsed_ms
+           FROM daily_results dr
+           JOIN players p ON p.id = dr.player_id
+           WHERE dr.puzzle_date = $1 AND dr.category = $2
+           ORDER BY dr.normalized_score DESC, dr.elapsed_ms ASC
+           LIMIT 50`,
+          [date, category]
+        ),
+        pool.query<{
+          puzzle_family_id: string
+          family_index: number
+        }>(
+          `SELECT puzzle_family_id, family_index
+           FROM daily_puzzles
+           WHERE puzzle_date = $1 AND category = $2`,
+          [date, category]
+        )
+      ])
 
-    // Check if the current player is already in the top 50
+      totalPlayers = parseInt(countRow.rows[0]?.total ?? '0', 10)
+      familyIndex = puzzleRow.rows[0]?.family_index
+
+      boardEntries = topRows.rows.map((row, i) => ({
+        rank: i + 1,
+        playerId: row.player_id,
+        shortId: row.short_id ?? row.player_id.slice(0, 8),
+        displayName: row.display_name ?? 'Player',
+        normalizedScore: row.normalized_score,
+        elapsedMs: row.elapsed_ms,
+        avgScore: null,
+        clears: null,
+        bestScore: null,
+        totalPoints: null,
+        streakDays: null,
+        clearsByCategory: null,
+        isCurrentPlayer: false
+      }))
+
+      dailyBoardCache.set(cacheKey, {
+        entries: boardEntries,
+        totalPlayers,
+        familyIndex,
+        expires: Date.now() + BOARD_CACHE_TTL_MS
+      })
+    }
+
+    const entries = boardEntries.map((e) =>
+      validPlayerId && e.playerId === validPlayerId
+        ? { ...e, isCurrentPlayer: true }
+        : e
+    )
+
     const playerInTop = entries.find((e) => e.isCurrentPlayer) ?? null
     let playerEntry: LeaderboardEntry | null = playerInTop
     let playerRank: number | null = playerInTop?.rank ?? null
 
     if (validPlayerId && !playerInTop) {
-      const playerResultRow = await client.query<{
+      const playerResultRow = await pool.query<{
         normalized_score: number
         elapsed_ms: number
         display_name: string | null
@@ -233,19 +277,18 @@ async function getDailyCategoryLeaderboard(
       }>(
         `SELECT dr.normalized_score, dr.elapsed_ms,
                 p.display_name, p.short_id
-          FROM daily_results dr
-          JOIN players p ON p.id = dr.player_id
-          WHERE dr.puzzle_date = $1 AND dr.category = $2 AND dr.player_id = $3`,
+         FROM daily_results dr
+         JOIN players p ON p.id = dr.player_id
+         WHERE dr.puzzle_date = $1 AND dr.category = $2 AND dr.player_id = $3`,
         [date, category, validPlayerId]
       )
       if (playerResultRow.rows.length > 0) {
         const pr = playerResultRow.rows[0]
-        // Compute rank: count players scoring higher, or same score with lower elapsed
-        const rankRow = await client.query<{ rank: string }>(
+        const rankRow = await pool.query<{ rank: string }>(
           `SELECT COUNT(*) + 1 AS rank
-            FROM daily_results
-            WHERE puzzle_date = $1 AND category = $2
-              AND (normalized_score > $3
+           FROM daily_results
+           WHERE puzzle_date = $1 AND category = $2
+             AND (normalized_score > $3
                   OR (normalized_score = $3 AND elapsed_ms < $4))`,
           [date, category, pr.normalized_score, pr.elapsed_ms]
         )
@@ -267,17 +310,6 @@ async function getDailyCategoryLeaderboard(
         }
       }
     }
-    // Fetch puzzle family info for display
-    const puzzleRow = await client.query<{
-      puzzle_family_id: string
-      family_index: number
-    }>(
-      `SELECT puzzle_family_id, family_index
-        FROM daily_puzzles
-        WHERE puzzle_date = $1 AND category = $2`,
-      [date, category]
-    )
-    const puzzleInfo = puzzleRow.rows[0]
 
     return {
       success: true,
@@ -287,15 +319,13 @@ async function getDailyCategoryLeaderboard(
       totalPlayers,
       puzzleDate: date,
       category,
-      familyIndex: puzzleInfo?.family_index,
+      familyIndex,
       period: 'daily',
       scope: category
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return { success: false, error: message }
-  } finally {
-    client.release()
   }
 }
 
