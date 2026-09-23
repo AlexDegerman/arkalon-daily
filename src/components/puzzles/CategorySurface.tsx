@@ -181,13 +181,14 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
     useEffect(() => {
       const setContext = useMusicStore.getState().setContext
-      if (phase === 'playing' || phase === 'trial-explainer') {
-        setContext(category)
-      } else if (
+      if (
+        phase === 'playing' ||
+        phase === 'trial-explainer' ||
         phase === 'result' ||
-        phase === 'loading' ||
         phase === 'submitting'
       ) {
+        setContext(category)
+      } else if (phase === 'loading') {
         setContext('menu')
       }
     }, [phase, category])

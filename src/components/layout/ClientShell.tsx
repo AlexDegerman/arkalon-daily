@@ -15,6 +15,7 @@ import { TTS_LINES } from '@/lib/ttsLines'
 import { useActiveView } from '@/hooks/useActiveView'
 import { useBGM } from '@/hooks/useBGM'
 import { TopNavDeck } from '@/components/layout/TopNavDeck'
+import { useMusicStore } from '@/app/stores/musicStore'
 
 // Hydrates sound preferences from localStorage on mount
 function useSoundPersistence() {
@@ -96,6 +97,12 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   useSoundPersistence()
   useSoundPersistenceWrite()
   useBGM()
+
+  useEffect(() => {
+    if (activeView !== 'game') {
+      useMusicStore.getState().setContext('menu')
+    }
+  }, [activeView])
 
   // Prime voices on first interaction
   useEffect(() => {

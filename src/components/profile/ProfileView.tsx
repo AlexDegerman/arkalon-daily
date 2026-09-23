@@ -35,16 +35,17 @@ export function ProfileView({
   const displayName = profile.displayName ?? 'Player'
 
   const handleCopyLink = useCallback(async () => {
+    const publicHandle = profile.shortId || profile.id
     const url =
       typeof window !== 'undefined'
-        ? `${window.location.origin}/profile/${profile.id}`
-        : `https://daily.rpsleague.fi/profile/${profile.id}`
+        ? `${window.location.origin}/profile/${publicHandle}`
+        : `https://daily.rpsleague.fi/profile/${publicHandle}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {}
-  }, [profile.id])
+  }, [profile.shortId, profile.id])
 
   return (
     <div className="mx-auto flex w-full max-w-180 flex-col gap-3 sm:gap-4 px-3 sm:px-4 py-3 sm:py-5 pb-16">

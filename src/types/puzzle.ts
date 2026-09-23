@@ -139,6 +139,7 @@ export interface CategoryStatus {
 
 export interface PlayerProfile {
   id: string
+  shortId: string
   displayName: string | null
   createdAt: string
   trialsCompleted: string[]

@@ -28,6 +28,7 @@ const Schema = z.object({
 export interface LeaderboardEntry {
   rank: number
   playerId: string
+  shortId: string
   displayName: string
   normalizedScore: number
   elapsedMs: number
@@ -68,6 +69,7 @@ export interface LeaderboardResult {
 
 interface AggregateRow {
   player_id: string
+  short_id: string | null
   display_name: string | null
   plays: string
   clears: string
@@ -99,12 +101,12 @@ async function fetchStreakMap(
   const sql =
     scope === 'total'
       ? `SELECT player_id, SUM(current_streak)::int AS streak
-         FROM category_streaks
-         WHERE player_id = ANY($1::uuid[])
-         GROUP BY player_id`
+          FROM category_streaks
+          WHERE player_id = ANY($1::uuid[])
+          GROUP BY player_id`
       : `SELECT player_id, current_streak AS streak
-         FROM category_streaks
-         WHERE player_id = ANY($1::uuid[]) AND category = $2`
+          FROM category_streaks
+          WHERE player_id = ANY($1::uuid[]) AND category = $2`
   const args = scope === 'total' ? [playerIds] : [playerIds, scope]
   const rows = await client.query<{ player_id: string; streak: number }>(
     sql,
@@ -122,6 +124,7 @@ function mapAggregateRow(
   return {
     rank,
     playerId: row.player_id,
+    shortId: row.short_id ?? row.player_id.slice(0, 8),
     displayName: row.display_name ?? 'Player',
     normalizedScore: 0,
     elapsedMs: 0,
@@ -177,8 +180,8 @@ async function getDailyCategoryLeaderboard(
     // Total player count for this puzzle
     const countRow = await client.query<{ total: string }>(
       `SELECT COUNT(*) AS total
-       FROM daily_results
-       WHERE puzzle_date = $1 AND category = $2`,
+        FROM daily_results
+        WHERE puzzle_date = $1 AND category = $2`,
       [date, category]
     )
     const totalPlayers = parseInt(countRow.rows[0]?.total ?? '0', 10)
@@ -186,22 +189,24 @@ async function getDailyCategoryLeaderboard(
     // Top 50 entries ordered by score desc, elapsed asc
     const topRows = await client.query<{
       player_id: string
+      short_id: string | null
       display_name: string | null
       normalized_score: number
       elapsed_ms: number
     }>(
-      `SELECT dr.player_id, p.display_name,
+      `SELECT dr.player_id, p.short_id, p.display_name,
               dr.normalized_score, dr.elapsed_ms
-       FROM daily_results dr
-       JOIN players p ON p.id = dr.player_id
-       WHERE dr.puzzle_date = $1 AND dr.category = $2
-       ORDER BY dr.normalized_score DESC, dr.elapsed_ms ASC
-       LIMIT 50`,
+        FROM daily_results dr
+        JOIN players p ON p.id = dr.player_id
+        WHERE dr.puzzle_date = $1 AND dr.category = $2
+        ORDER BY dr.normalized_score DESC, dr.elapsed_ms ASC
+        LIMIT 50`,
       [date, category]
     )
     const entries: LeaderboardEntry[] = topRows.rows.map((row, i) => ({
       rank: i + 1,
       playerId: row.player_id,
+      shortId: row.short_id ?? row.player_id.slice(0, 8),
       displayName: row.display_name ?? 'Player',
       normalizedScore: row.normalized_score,
       elapsedMs: row.elapsed_ms,
@@ -224,12 +229,13 @@ async function getDailyCategoryLeaderboard(
         normalized_score: number
         elapsed_ms: number
         display_name: string | null
+        short_id: string | null
       }>(
         `SELECT dr.normalized_score, dr.elapsed_ms,
-                p.display_name
-         FROM daily_results dr
-         JOIN players p ON p.id = dr.player_id
-         WHERE dr.puzzle_date = $1 AND dr.category = $2 AND dr.player_id = $3`,
+                p.display_name, p.short_id
+          FROM daily_results dr
+          JOIN players p ON p.id = dr.player_id
+          WHERE dr.puzzle_date = $1 AND dr.category = $2 AND dr.player_id = $3`,
         [date, category, validPlayerId]
       )
       if (playerResultRow.rows.length > 0) {
@@ -237,9 +243,9 @@ async function getDailyCategoryLeaderboard(
         // Compute rank: count players scoring higher, or same score with lower elapsed
         const rankRow = await client.query<{ rank: string }>(
           `SELECT COUNT(*) + 1 AS rank
-           FROM daily_results
-           WHERE puzzle_date = $1 AND category = $2
-             AND (normalized_score > $3
+            FROM daily_results
+            WHERE puzzle_date = $1 AND category = $2
+              AND (normalized_score > $3
                   OR (normalized_score = $3 AND elapsed_ms < $4))`,
           [date, category, pr.normalized_score, pr.elapsed_ms]
         )
@@ -247,6 +253,7 @@ async function getDailyCategoryLeaderboard(
         playerEntry = {
           rank: playerRank,
           playerId: validPlayerId,
+          shortId: pr.short_id ?? validPlayerId.slice(0, 8),
           displayName: pr.display_name ?? 'Player',
           normalizedScore: pr.normalized_score,
           elapsedMs: pr.elapsed_ms,
@@ -260,15 +267,14 @@ async function getDailyCategoryLeaderboard(
         }
       }
     }
-
     // Fetch puzzle family info for display
     const puzzleRow = await client.query<{
       puzzle_family_id: string
       family_index: number
     }>(
       `SELECT puzzle_family_id, family_index
-       FROM daily_puzzles
-       WHERE puzzle_date = $1 AND category = $2`,
+        FROM daily_puzzles
+        WHERE puzzle_date = $1 AND category = $2`,
       [date, category]
     )
     const puzzleInfo = puzzleRow.rows[0]
@@ -340,18 +346,18 @@ async function getAggregateLeaderboard(
     params.push(threshold)
     const minParam = params.length
     const aggCte = `WITH agg AS (
-       SELECT player_id,
+          SELECT player_id,
               COUNT(*) AS plays,
               COUNT(*) FILTER (WHERE status = 'solved') AS clears,
               AVG(normalized_score)::numeric(5,1) AS avg_score,
               MAX(normalized_score) AS best_score,
               SUM(normalized_score) AS total_points${stripCols}
-       FROM daily_results
-       ${whereSql}
-       GROUP BY player_id
-       HAVING COUNT(*) >= $${minParam}
+        FROM daily_results
+        ${whereSql}
+        GROUP BY player_id
+        HAVING COUNT(*) >= $${minParam}
           AND COUNT(*) FILTER (WHERE status = 'solved') >= 1
-     )`
+        )`
 
     const cacheKey = `${period}:${scope}:${dateStart ?? 'all'}`
     const cached = boardCache.get(cacheKey)
@@ -363,11 +369,11 @@ async function getAggregateLeaderboard(
     } else {
       const boardRows = await client.query<AggregateRow>(
         `${aggCte}
-         SELECT a.*, p.display_name
-         FROM agg a
-         JOIN players p ON p.id = a.player_id
-         ORDER BY a.avg_score DESC, a.clears DESC, a.best_score DESC
-         LIMIT 50`,
+          SELECT a.*, p.short_id, p.display_name
+          FROM agg a
+          JOIN players p ON p.id = a.player_id
+          ORDER BY a.avg_score DESC, a.clears DESC, a.best_score DESC
+          LIMIT 50`,
         params
       )
       const countRow = await client.query<{ total: string }>(
@@ -421,8 +427,8 @@ async function getAggregateLeaderboard(
                 AVG(normalized_score)::numeric(5,1) AS avg_score,
                 MAX(normalized_score) AS best_score,
                 SUM(normalized_score) AS total_points
-         FROM daily_results
-         WHERE ${pWhereSql}`,
+          FROM daily_results
+          WHERE ${pWhereSql}`,
         pParams
       )
       const pa = playerAgg.rows[0]
@@ -442,22 +448,25 @@ async function getAggregateLeaderboard(
         // Rank against the qualified field using the board's sort order
         const rankRow = await client.query<{ rank: string }>(
           `${aggCte}
-           SELECT COUNT(*) + 1 AS rank
-           FROM agg a
-           WHERE a.avg_score > $${minParam + 1}
+            SELECT COUNT(*) + 1 AS rank
+            FROM agg a
+            WHERE a.avg_score > $${minParam + 1}
               OR (a.avg_score = $${minParam + 1} AND a.clears > $${minParam + 2})
               OR (a.avg_score = $${minParam + 1} AND a.clears = $${minParam + 2} AND a.best_score > $${minParam + 3})`,
           [...params, avg, clears, best]
         )
         playerRank = parseInt(rankRow.rows[0]?.rank ?? '1', 10)
         const streakMap = await fetchStreakMap(client, [validPlayerId], scope)
-        const nameRow = await client.query<{ display_name: string | null }>(
-          'SELECT display_name FROM players WHERE id = $1',
-          [validPlayerId]
-        )
+        const nameRow = await client.query<{
+          display_name: string | null
+          short_id: string | null
+        }>('SELECT display_name, short_id FROM players WHERE id = $1', [
+          validPlayerId
+        ])
         playerEntry = {
           rank: playerRank,
           playerId: validPlayerId,
+          shortId: nameRow.rows[0]?.short_id ?? validPlayerId.slice(0, 8),
           displayName: nameRow.rows[0]?.display_name ?? 'Player',
           normalizedScore: 0,
           elapsedMs: 0,
@@ -476,8 +485,8 @@ async function getAggregateLeaderboard(
                     COUNT(*) FILTER (WHERE status = 'solved' AND category = 'cipher') AS cipher,
                     COUNT(*) FILTER (WHERE status = 'solved' AND category = 'strike') AS strike,
                     COUNT(*) FILTER (WHERE status = 'solved' AND category = 'depths') AS depths
-             FROM daily_results
-             WHERE ${pWhereSql}`,
+              FROM daily_results
+              WHERE ${pWhereSql}`,
             pParams
           )
           const s = stripRow.rows[0]

@@ -20,6 +20,7 @@ export async function getOrCreateDailyPlayer() {
   let coreId = cookieStore.get(CORE_ID_COOKIE)?.value
   let sessionToken = cookieStore.get(SESSION_COOKIE)?.value
   let nickname: string | undefined
+  let networkShortId: string | undefined
 
   // Local development: use a mock player because Arkalon Network is not running
   if (
@@ -50,6 +51,7 @@ export async function getOrCreateDailyPlayer() {
     coreId = data.coreId
     sessionToken = data.sessionToken
     nickname = data.nickname
+    networkShortId = data.shortId
 
     // Set root cookies across .rpsleague.fi
     const domain = cookieDomain()
@@ -80,11 +82,15 @@ export async function getOrCreateDailyPlayer() {
     )
 
     if (existing.rows.length === 0) {
+      const fallbackShortId = Math.random().toString(36).substring(2, 10)
+      const assignedShortId = networkShortId ?? fallbackShortId
+
       await client.query(
-        `INSERT INTO players (id, display_name, created_at, last_seen_at, milestones_celebrated, trials_completed)
-          VALUES ($1, $2, now(), now(), '{}', '{}')
-          ON CONFLICT (id) DO NOTHING`,
-        [coreId, nickname ?? 'Player']
+        `INSERT INTO players (id, short_id, display_name, created_at, last_seen_at, milestones_celebrated, trials_completed)
+          VALUES ($1, $2, $3, now(), now(), '{}', '{}')
+          ON CONFLICT (id) DO UPDATE SET
+            short_id = COALESCE(players.short_id, EXCLUDED.short_id)`,
+        [coreId, assignedShortId, nickname ?? 'Player']
       )
 
       // Initialize category streaks

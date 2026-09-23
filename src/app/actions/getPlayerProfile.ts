@@ -18,29 +18,39 @@ export interface GetPlayerProfileResult {
 }
 
 export async function getPlayerProfile(
-  playerId?: string | null
+  playerIdOrShortId?: string | null
 ): Promise<GetPlayerProfileResult> {
-  let activePlayerId: string
-
-  // If playerId is missing or not a valid UUID, resolve via getOrCreateDailyPlayer
-  if (!playerId || !z.string().uuid().safeParse(playerId).success) {
-    const dailyPlayer = await getOrCreateDailyPlayer()
-    activePlayerId = dailyPlayer.coreId
-  } else {
-    activePlayerId = playerId
-  }
-
   const client = await pool.connect()
   try {
+    let activePlayerId: string
+
+    if (!playerIdOrShortId) {
+      const dailyPlayer = await getOrCreateDailyPlayer()
+      activePlayerId = dailyPlayer.coreId
+    } else {
+      const resolved = await client.query<{ id: string }>(
+        'SELECT id FROM players WHERE short_id = $1 OR id::text = $1 LIMIT 1',
+        [playerIdOrShortId]
+      )
+      if (resolved.rows.length > 0) {
+        activePlayerId = resolved.rows[0].id
+      } else if (z.string().uuid().safeParse(playerIdOrShortId).success) {
+        activePlayerId = playerIdOrShortId
+      } else {
+        return { success: false, error: 'Player not found' }
+      }
+    }
+
     // Fetch player row
     let playerRow = await client.query<{
       id: string
+      short_id: string | null
       display_name: string | null
       created_at: string
       trials_completed: string[]
       recovery_tutorial_shown: boolean
     }>(
-      `SELECT id, display_name, created_at::text,
+      `SELECT id, short_id, display_name, created_at::text,
               trials_completed, recovery_tutorial_shown
         FROM players
         WHERE id = $1`,
@@ -68,6 +78,7 @@ export async function getPlayerProfile(
     const p = playerRow.rows[0]
     const profile: PlayerProfile = {
       id: p.id,
+      shortId: p.short_id ?? p.id.slice(0, 8),
       displayName: p.display_name,
       createdAt: p.created_at,
       trialsCompleted: p.trials_completed ?? [],
