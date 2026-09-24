@@ -9,8 +9,9 @@ import type {
   ArkalonVisionData,
   ArkalonVisionRound
 } from '@/lib/puzzles/families/arkalonVision'
+import { StartCountdownOverlay } from '@/components/layout/StartCountdownOverlay'
 
-type RoundPhase = 'display' | 'input' | 'feedback'
+type RoundPhase = 'countdown' | 'display' | 'input' | 'feedback'
 
 const ROUND_INPUT_TIME_LIMIT_SEC = 16
 
@@ -86,7 +87,7 @@ export function ArkalonVision({
     }
     return {
       roundIndex: 0,
-      phase: 'display',
+      phase: 'countdown',
       entered: [],
       errors: 0,
       startMs: 0
@@ -399,7 +400,15 @@ export function ArkalonVision({
       )}
 
       {/* Puzzle surface */}
-      <div className="w-full rounded-xl border border-border-subtle bg-surface-panel p-4">
+      <div className="relative w-full rounded-xl border border-border-subtle bg-surface-panel p-4 min-h-48">
+        {roundState.phase === 'countdown' && (
+          <StartCountdownOverlay
+            onComplete={() =>
+              setRoundState((prev) => ({ ...prev, phase: 'display' }))
+            }
+          />
+        )}
+
         {roundState.phase === 'display' && (
           <GlyphSequenceDisplay
             sequence={currentRound.sequence}

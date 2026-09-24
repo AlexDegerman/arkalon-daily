@@ -13,6 +13,7 @@ import type {
   SurgeFrenzyData,
   SurgeNode
 } from '@/lib/puzzles/families/surgeFrenzy'
+import { StartCountdownOverlay } from '@/components/layout/StartCountdownOverlay'
 
 export interface SurgeFrenzyResult {
   nodes: {
@@ -89,7 +90,10 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     savedSession?.startWallTime ?? Date.now()
   )
 
+
+
   const [isPaused, setIsPaused] = useState(false)
+  const [isCountingDown, setIsCountingDown] = useState(() => !savedSession)
   const [activeNodes, setActiveNodes] = useState<ActiveNode[]>([])
 
   // Mutable game state that does not need to trigger re-renders each frame
@@ -251,7 +255,7 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
 
     function tick(now: number) {
       if (s.finished) return
-      if (isPaused) {
+      if (isPaused || isCountingDown) {
         rafRef.current = requestAnimationFrame(tick)
         return
       }
@@ -496,6 +500,9 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
           )
         })}
 
+        {isCountingDown && (
+          <StartCountdownOverlay onComplete={() => setIsCountingDown(false)} />
+        )}
         <PauseOverlay isPaused={isPaused} onResume={() => setIsPaused(false)} />
       </div>
 

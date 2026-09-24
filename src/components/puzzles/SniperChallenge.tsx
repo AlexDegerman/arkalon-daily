@@ -11,6 +11,7 @@ import type {
   SniperShot
 } from '@/lib/puzzles/families/sniperChallenge'
 import type { MotionFunctionId } from '@/types/puzzle'
+import { StartCountdownOverlay } from '@/components/layout/StartCountdownOverlay'
 
 export interface SniperChallengeResult {
   shots: { deviationPx: number; targetWindowPx: number }[]
@@ -161,6 +162,7 @@ export function SniperChallenge({
   })
 
   const [shotIndex, setShotIndex] = useState(() => initialShots.length)
+  const [isStarting, setIsStarting] = useState(() => initialShots.length === 0)
   const [isPaused, setIsPaused] = useState(false)
   const [lastGrade, setLastGrade] = useState<ShotGrade | null>(null)
   const [gradeVisible, setGradeVisible] = useState(false)
@@ -274,7 +276,7 @@ export function SniperChallenge({
 
     function tick(now: number) {
       if (finishedRef.current) return
-      if (isPaused) {
+      if (isPaused || isStarting) {
         rafRef.current = requestAnimationFrame(tick)
         return
       }
@@ -485,6 +487,9 @@ export function SniperChallenge({
           </button>
         </div>
 
+        {isStarting && (
+          <StartCountdownOverlay onComplete={() => setIsStarting(false)} />
+        )}
         <PauseOverlay isPaused={isPaused} onResume={() => setIsPaused(false)} />
       </div>
 
