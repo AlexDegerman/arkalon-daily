@@ -36,6 +36,10 @@ interface CachedPuzzlePayload {
 }
 const dailyChallengeCache = new Map<string, CachedPuzzlePayload>()
 
+export async function clearDailyChallengeCache(): Promise<void> {
+  dailyChallengeCache.clear()
+}
+
 export async function getDailyChallenge(
   playerId: string,
   category: PuzzleCategory

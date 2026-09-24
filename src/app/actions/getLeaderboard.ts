@@ -177,6 +177,11 @@ interface CachedDailyBoard {
 }
 const dailyBoardCache = new Map<string, CachedDailyBoard>()
 
+export async function clearLeaderboardCache(): Promise<void> {
+  dailyBoardCache.clear()
+  boardCache.clear()
+}
+
 async function getDailyCategoryLeaderboard(
   validPlayerId: string | null,
   category: PuzzleCategory,

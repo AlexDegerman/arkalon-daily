@@ -9,6 +9,7 @@ interface GlyphKeypadProps {
   enteredGlyphs?: string[] // current input sequence for visual feedback
   expectedLength: number
   targetSequence?: string[]
+  isTimedOut?: boolean
 }
 
 export function GlyphKeypad({
@@ -17,7 +18,8 @@ export function GlyphKeypad({
   disabled = false,
   enteredGlyphs = [],
   expectedLength,
-  targetSequence
+  targetSequence,
+  isTimedOut = false
 }: GlyphKeypadProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, glyph: string) => {
@@ -49,7 +51,9 @@ export function GlyphKeypad({
               key={i}
               className={`flex h-9 w-9 items-center justify-center rounded border font-mono text-lg transition-colors ${
                 !isEntered
-                  ? 'border-border-subtle text-transparent'
+                  ? isTimedOut
+                    ? 'border-status-fail bg-status-fail/15 text-status-fail animate-pulse'
+                    : 'border-border-subtle text-transparent'
                   : isCorrect
                     ? 'border-accent-recall bg-accent-recall/10 text-text-primary'
                     : 'border-status-fail bg-status-fail/15 text-status-fail'

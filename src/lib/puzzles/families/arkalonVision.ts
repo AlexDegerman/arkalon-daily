@@ -55,7 +55,7 @@ function generate(seed: string): PuzzleSeedData {
 
   // Generate rounds
   const rounds: ArkalonVisionRound[] = baseConfig.seqLengths.map(
-    (seqLen, roundIdx) => {
+    (seqLen) => {
       // Each round has a slight duration variation for engagement
       const roundDurationVariance = nextFloat(rng, 0.92, 1.08)
       // Round total scales with sequence length so per-glyph time stays constant
@@ -63,10 +63,16 @@ function generate(seed: string): PuzzleSeedData {
         clampedPerGlyph * seqLen * roundDurationVariance
       )
 
-      // Build sequence: draw from glyph pool with replacement
+     // Build sequence: draw from glyph pool without adjacent duplicates
       const sequence: string[] = []
+      let lastGlyph: string | null = null
       for (let i = 0; i < seqLen; i++) {
-        sequence.push(glyphPool[nextInt(rng, glyphPool.length)])
+        const candidates: string[] = lastGlyph
+          ? glyphPool.filter((g) => g !== lastGlyph)
+          : glyphPool
+        const pick: string = candidates[nextInt(rng, candidates.length)]
+        sequence.push(pick)
+        lastGlyph = pick
       }
 
       // Randomized keypad shuffles per-round when enabled
@@ -140,9 +146,16 @@ registerValidator('arkalon_vision', (data) => {
         reason: `Per-glyph display duration too short: ${Math.round(perGlyphMs)}ms`
       }
     }
-    for (const glyph of round.sequence) {
+    for (let i = 0; i < round.sequence.length; i++) {
+      const glyph = round.sequence[i]
       if (!fam.glyphPool.includes(glyph)) {
         return { valid: false, reason: `Glyph "${glyph}" not in active pool` }
+      }
+      if (i > 0 && glyph === round.sequence[i - 1]) {
+        return {
+          valid: false,
+          reason: 'Consecutive duplicate glyphs not permitted'
+        }
       }
     }
   }

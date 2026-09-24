@@ -67,7 +67,7 @@ A browser-based daily puzzle platform offering five optional daily puzzles, each
 Each category maps to a registered puzzle family via a one-entry family registry. Adding a new family costs one registry entry plus one component with no other changes required.
 
 ### Recall
-Watch glyph sequences light up across a 16-symbol pool, then reproduce them from a shuffled keypad across three escalating rounds. Composition axes: sequence lengths 3-12, per-glyph display 500-1000ms, glyph pools 8-16, shuffled keypad layouts, and reverse-entry final rounds.
+Watch glyph sequences light up across a 16-symbol pool, then reproduce them from memory across three escalating rounds. Features procedural sequences with zero adjacent duplicate symbols, a 16-second input time limit per round with a decaying visual timer bar and audio urgency ticks, and partial credit scoring on timeout. Composition axes: sequence lengths 3-12, per-glyph display 500-1000ms, glyph pools 8-16, shuffled keypad layouts, and reverse-entry final rounds.
 
 <!-- TODO(record): ./assets/recall_showcase.gif
 <p align="center">
