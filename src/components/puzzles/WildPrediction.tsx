@@ -295,11 +295,11 @@ export function WildPrediction({
 
   const currentRound: CipherRound | undefined = data.rounds[roundIndex]
 
+  const roundTimeLimit = data.timerSeconds ?? 20
+
   // Per-round countdown timer
   useEffect(() => {
-    if (data.timerSeconds === null) return
-
-    let initialTime = data.timerSeconds
+    let initialTime = roundTimeLimit
     if (
       savedSession &&
       savedSession.roundIndex === roundIndex &&
@@ -308,7 +308,7 @@ export function WildPrediction({
       const elapsedSec = Math.floor(
         (Date.now() - savedSession.roundStartTimestamp) / 1000
       )
-      initialTime = Math.max(0, data.timerSeconds - elapsedSec)
+      initialTime = Math.max(0, roundTimeLimit - elapsedSec)
     }
 
     setTimeLeft(initialTime)
@@ -316,7 +316,7 @@ export function WildPrediction({
 
     if (initialTime <= 0) {
       totalErrorsRef.current++
-      responseMsRef.current.push(data.timerSeconds * 1000)
+      responseMsRef.current.push(roundTimeLimit * 1000)
       advanceRound(false)
       return
     }
@@ -330,7 +330,7 @@ export function WildPrediction({
           clearInterval(interval)
           // Time up - count as incorrect, advance
           totalErrorsRef.current++
-          responseMsRef.current.push(data.timerSeconds! * 1000)
+          responseMsRef.current.push(roundTimeLimit * 1000)
           advanceRound(false)
           return null
         }
@@ -339,7 +339,8 @@ export function WildPrediction({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [roundIndex, data.timerSeconds])
+  }, [roundIndex, roundTimeLimit])
+  
   // Urgency tick on each of the final three seconds of a timed round
   useEffect(() => {
     if (timeLeft !== null && timeLeft <= 3 && timeLeft > 0) {
