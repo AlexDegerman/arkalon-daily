@@ -15,7 +15,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Production environment variables available at build time (public only)
-COPY .env.production .env.production
+ENV NEXT_PUBLIC_APP_URL=https://daily.rpsleague.fi
 
 RUN npm run build
 
