@@ -27,7 +27,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: '.,!node_modules,!.next,!.git,!.env*,!*.log,!.github,!.vscode'
+          source: '.,!node_modules,!.next,!.git,!.env*,!*.log,!.github,!.vscode,!assets,!*.mp4,!*.gif'
           target: /opt/arkalon/arkalon-daily/
           overwrite: true
           rm: false
