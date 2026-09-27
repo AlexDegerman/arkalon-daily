@@ -120,7 +120,8 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
     getDailyChallenge(playerId, category).then((res) => {
       if (!res.success) {
-        setErrorMsg(res.error ?? 'Failed to load puzzle')
+        submittingRef.current = false
+        setErrorMsg(res.error ?? 'Submission failed')
         setPhase('error')
         return
       }
@@ -228,6 +229,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       if (!puzzleInfo || !playerIdRef.current || submittingRef.current) return
       submittingRef.current = true
       if (isTrial) {
+        submittingRef.current = false
         const pid = playerIdRef.current
         await completeTrial(pid, category)
         const ps = previewScore ?? 50
@@ -482,6 +484,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
               </p>
               <button
                 onClick={() => {
+                  submittingRef.current = false
                   setIsTrial(false)
                   if (arkalonTTSEnabled) {
                     speakArkalon(
