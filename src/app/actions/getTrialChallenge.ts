@@ -75,10 +75,9 @@ export async function getTrialChallenge(
         movementSpeed?: number
       }
       acceptable =
-        (profile.motionFunction === 'sinusoidal' ||
-          profile.motionFunction === 'linear') &&
-        (profile.targetWindowPx ?? 0) >= 50 &&
-        (profile.movementSpeed ?? 0) <= 1.6
+        profile.motionFunction === 'linear' &&
+        (profile.targetWindowPx ?? 0) >= 40 &&
+        (profile.movementSpeed ?? 0) <= 1.9
     }
 
     if (category === 'recall') {
@@ -115,7 +114,7 @@ export async function getTrialChallenge(
         gridSize?: number
       }
       acceptable =
-        profile.clueType === 'numeric' && (profile.gridSize ?? 5) === 5
+        profile.clueType === 'adjacency_count' && (profile.gridSize ?? 0) <= 6
     }
 
     if (acceptable) break

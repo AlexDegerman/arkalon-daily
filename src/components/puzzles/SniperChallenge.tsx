@@ -333,15 +333,24 @@ export function SniperChallenge({
       }
 
       // Auto-miss if reticle completes one full traversal without FIRE
-      const passDurationSec =
-        fn === 'deceptive' && currentShot
-          ? calcDeceptivePassDuration(
-              currentShot.targetCenterX,
-              data.movementSpeed
-            )
-          : TRACK_LOGICAL_WIDTH / (data.movementSpeed * 200)
+      let roundTripSec: number
 
-      if (tMs > passDurationSec * 2500) {
+      if (fn === 'deceptive' && currentShot) {
+        roundTripSec = calcDeceptivePassDuration(
+          currentShot.targetCenterX,
+          data.movementSpeed
+        )
+      } else if (fn === 'staccato') {
+        roundTripSec = ((1200 / 45) * 0.4) / data.movementSpeed
+      } else if (fn === 'pendulum') {
+        roundTripSec = (520 * Math.PI) / (data.movementSpeed * 200)
+      } else if (fn === 'sinusoidal') {
+        roundTripSec = 1 / ((currentShot?.freqHz ?? 0.5) * data.movementSpeed)
+      } else {
+        roundTripSec = (TRACK_LOGICAL_WIDTH * 2) / (data.movementSpeed * 200)
+      }
+
+      if (tSec >= roundTripSec) {
         handleFire(true)
         return
       }
