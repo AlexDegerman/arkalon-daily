@@ -34,28 +34,26 @@ export function GlyphSequenceDisplay({
     const perGlyphMs = displayDurationMs / sequence.length
     let index = 0
 
-    const startDelay = setTimeout(() => {
-      setActiveIndex(0)
-      onTickRef.current?.(0)
-      index = 1
-      intervalRef.current = setInterval(() => {
-        if (index < sequence.length) {
-          setActiveIndex(index)
-          onTickRef.current?.(index)
-          index++
-        } else {
-          if (intervalRef.current) clearInterval(intervalRef.current)
-          intervalRef.current = null
-          postDelayRef.current = setTimeout(() => {
-            setActiveIndex(null)
-            onCompleteRef.current()
-          }, 300)
-        }
-      }, perGlyphMs)
-    }, 400)
+    // Render first glyph and play its tick in perfect synchrony on mount
+    setActiveIndex(0)
+    onTickRef.current?.(0)
+
+    intervalRef.current = setInterval(() => {
+      index++
+      if (index < sequence.length) {
+        setActiveIndex(index)
+        onTickRef.current?.(index)
+      } else {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        intervalRef.current = null
+        postDelayRef.current = setTimeout(() => {
+          setActiveIndex(null)
+          onCompleteRef.current()
+        }, 250)
+      }
+    }, perGlyphMs)
 
     return () => {
-      clearTimeout(startDelay)
       if (intervalRef.current) clearInterval(intervalRef.current)
       if (postDelayRef.current) clearTimeout(postDelayRef.current)
     }
@@ -68,7 +66,7 @@ export function GlyphSequenceDisplay({
       aria-atomic="true"
       aria-label="Glyph sequence display"
     >
-      {activeIndex !== null && sequence[activeIndex] !== undefined ? (
+      {activeIndex !== null && sequence[activeIndex] !== undefined && (
         <span
           key={activeIndex}
           className="font-mono text-7xl text-text-primary transition-opacity duration-100"
@@ -76,8 +74,6 @@ export function GlyphSequenceDisplay({
         >
           {sequence[activeIndex]}
         </span>
-      ) : (
-        <span className="text-sm text-text-muted">Preparing...</span>
       )}
     </div>
   )

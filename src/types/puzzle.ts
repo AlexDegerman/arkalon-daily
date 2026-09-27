@@ -59,7 +59,13 @@ export type SpatialLayoutId =
   | 'asymmetrical'
   | 'narrow_corridor'
 
-export type MotionFunctionId = 'linear' | 'sinusoidal' | 'erratic' | 'deceptive'
+export type MotionFunctionId =
+  | 'linear'
+  | 'sinusoidal'
+  | 'erratic'
+  | 'deceptive'
+  | 'pendulum'
+  | 'staccato'
 
 export type PatternGeneratorId =
   | 'alternating'

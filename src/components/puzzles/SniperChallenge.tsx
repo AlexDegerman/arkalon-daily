@@ -55,6 +55,21 @@ function getGrade(deviationPx: number, targetWindowPx: number): ShotGrade {
   return 'miss'
 }
 
+function calcDeceptivePassDuration(
+  targetCenterX: number,
+  movementSpeed: number
+): number {
+  const v = movementSpeed * 200
+  const approachX = Math.max(0, targetCenterX - 100)
+  const deceptStart = approachX / v
+  const deceptEnd = deceptStart + 0.3
+  const deceptPos = approachX + v * 0.3 * 0.3
+  const reverseEnd = deceptEnd + 0.2
+  const reversePos = deceptPos - v * 0.25 * 0.2
+  const snapDuration = Math.max(0, 600 - reversePos) / (1.2 * v)
+  return reverseEnd + snapDuration
+}
+
 // Deceptive motion: approach target, fake-decelerate, then accelerate through
 function calcDeceptiveX(
   tSec: number,
@@ -62,10 +77,9 @@ function calcDeceptiveX(
   movementSpeed: number
 ): number {
   const v = movementSpeed * 200
-  // Full pass takes trackWidth / v seconds - approximate one pass
-  const passDuration = 600 / v
+  const passDuration = calcDeceptivePassDuration(targetCenterX, movementSpeed)
   const tInPass = tSec % passDuration
-  const approachThreshold = (targetCenterX - 60) / v
+  const approachThreshold = Math.max(0, targetCenterX - 100) / v
   const deceptStart = approachThreshold
   const deceptEnd = deceptStart + 0.3 // 300ms decel phase
   const reverseEnd = deceptEnd + 0.2 // 200ms reverse phase
@@ -75,18 +89,18 @@ function calcDeceptiveX(
   } else if (tInPass < deceptEnd) {
     // Decelerate to 30% speed
     const dt = tInPass - deceptStart
-    return targetCenterX - 60 + v * 0.3 * dt
+    return Math.max(0, targetCenterX - 100) + v * 0.3 * dt
   } else if (tInPass < reverseEnd) {
     // Brief reverse
     const dt = tInPass - deceptEnd
-    const deceptPos = targetCenterX - 60 + v * 0.3 * (deceptEnd - deceptStart)
+    const deceptPos =
+      Math.max(0, targetCenterX - 100) + v * 0.3 * (deceptEnd - deceptStart)
     return deceptPos - v * 0.25 * dt
   } else {
     // Accelerate through at 1.2x
     const dt = tInPass - reverseEnd
     const reversePos =
-      targetCenterX -
-      60 +
+      Math.max(0, targetCenterX - 100) +
       v * 0.3 * (deceptEnd - deceptStart) -
       v * 0.25 * (reverseEnd - deceptEnd)
     return Math.min(600, reversePos + v * 1.2 * dt)
@@ -167,6 +181,8 @@ export function SniperChallenge({
   const [lastGrade, setLastGrade] = useState<ShotGrade | null>(null)
   const [gradeVisible, setGradeVisible] = useState(false)
 
+  const isStartingRef = useRef(initialShots.length === 0)
+  const isResolvingRef = useRef(false)
   const rafRef = useRef<number>(0)
   const shotStartRef = useRef<number>(0)
   const pausedMsRef = useRef<number>(0)
@@ -270,13 +286,20 @@ export function SniperChallenge({
     }
   }, [shotIndex, isTrial, data.shotCount])
 
+  const isPausedRef = useRef(isPaused)
+  isPausedRef.current = isPaused
+
   // rAF loop - only updates the reticle DOM element directly to avoid React re-renders
   useEffect(() => {
-    if (!currentShot || finishedRef.current) return
+    if (!currentShot || finishedRef.current || isStarting) return
+
+    if (sessionStartRef.current === 0) {
+      sessionStartRef.current = performance.now()
+    }
 
     function tick(now: number) {
       if (finishedRef.current) return
-      if (isPaused || isStarting) {
+      if (isPausedRef.current) {
         rafRef.current = requestAnimationFrame(tick)
         return
       }
@@ -310,7 +333,15 @@ export function SniperChallenge({
       }
 
       // Auto-miss if reticle completes one full traversal without FIRE
-      if (tMs > (TRACK_LOGICAL_WIDTH / (data.movementSpeed * 200)) * 2500) {
+      const passDurationSec =
+        fn === 'deceptive' && currentShot
+          ? calcDeceptivePassDuration(
+              currentShot.targetCenterX,
+              data.movementSpeed
+            )
+          : TRACK_LOGICAL_WIDTH / (data.movementSpeed * 200)
+
+      if (tMs > passDurationSec * 2500) {
         handleFire(true)
         return
       }
@@ -320,11 +351,19 @@ export function SniperChallenge({
 
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [shotIndex, isPaused, currentShot, data, scale])
+  }, [shotIndex, isStarting, currentShot, data, scale])
 
   const handleFire = useCallback(
     (autoMiss = false) => {
-      if (finishedRef.current || isPaused || !currentShot) return
+      if (
+        finishedRef.current ||
+        isPaused ||
+        isStartingRef.current ||
+        isResolvingRef.current ||
+        !currentShot
+      )
+        return
+      isResolvingRef.current = true
       cancelAnimationFrame(rafRef.current)
 
       const reticleX = autoMiss ? -9999 : reticleXRef.current
@@ -387,26 +426,45 @@ export function SniperChallenge({
         const avgDeviation = Math.round(
           shots.reduce((s, r) => s + r.deviationPx, 0) / shots.length
         )
-        onComplete({
-          shots,
-          totalElapsedMs,
-          perfectHits,
-          excellentHits,
-          accuracyPct,
-          avgDeviation,
-          totalShots: shots.length
-        })
+
+        setTimeout(() => {
+          onComplete({
+            shots,
+            totalElapsedMs,
+            perfectHits,
+            excellentHits,
+            accuracyPct,
+            avgDeviation,
+            totalShots: shots.length
+          })
+        }, 800)
       } else {
-        setTimeout(() => setShotIndex(nextIndex), 600)
+        setTimeout(() => {
+          isResolvingRef.current = false
+          setShotIndex(nextIndex)
+        }, 600)
       }
     },
-    [currentShot, shotIndex, data.shotCount, isPaused, play, onComplete]
+    [
+      currentShot,
+      shotIndex,
+      data.shotCount,
+      isPaused,
+      play,
+      onComplete,
+      isTrial
+    ]
   )
 
   // Keyboard FIRE on Space or Enter
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.key === ' ' || e.key === 'Enter') && !isPaused) {
+      if (
+        (e.key === ' ' || e.key === 'Enter') &&
+        !isPaused &&
+        !isStartingRef.current &&
+        !isResolvingRef.current
+      ) {
         e.preventDefault()
         handleFire()
       }
@@ -426,17 +484,28 @@ export function SniperChallenge({
       {isTrial && <TrialBanner />}
 
       {/* Shot counter */}
-      <div className="flex items-center justify-between text-xs text-text-muted">
+      <div className="flex items-center justify-between text-xs text-text-muted font-mono">
         <span>
           Shot {shotIndex + 1} of {data.shotCount}
         </span>
         <span
+          className="font-bold tracking-wider uppercase text-[11px]"
           style={{
-            color: data.motionFunction === 'deceptive' ? '#ff3b5c' : undefined
+            color:
+              data.motionFunction === 'deceptive'
+                ? '#ff3b5c'
+                : data.motionFunction === 'staccato'
+                  ? '#00d4ff'
+                  : data.motionFunction === 'pendulum'
+                    ? '#a78bfa'
+                    : data.motionFunction === 'erratic'
+                      ? '#f59e0b'
+                      : data.motionFunction === 'sinusoidal'
+                        ? '#34d399'
+                        : '#e8edf4'
           }}
         >
-          {data.motionFunction.charAt(0).toUpperCase() +
-            data.motionFunction.slice(1)}
+          {data.motionFunction}
         </span>
       </div>
 
@@ -479,7 +548,7 @@ export function SniperChallenge({
         <div className="mt-8 flex justify-center">
           <button
             onClick={() => handleFire()}
-            disabled={isPaused}
+            disabled={isPaused || isStarting}
             aria-label="Fire"
             className="min-h-16 min-w-40 rounded-xl border-2 border-accent-strike bg-accent-strike/10 px-8 py-4 font-mono text-lg font-bold tracking-widest text-accent-strike transition-colors hover:bg-accent-strike/20 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent-strike active:bg-accent-strike/30"
           >
@@ -488,7 +557,12 @@ export function SniperChallenge({
         </div>
 
         {isStarting && (
-          <StartCountdownOverlay onComplete={() => setIsStarting(false)} />
+          <StartCountdownOverlay
+            onComplete={() => {
+              isStartingRef.current = false
+              setIsStarting(false)
+            }}
+          />
         )}
         <PauseOverlay isPaused={isPaused} onResume={() => setIsPaused(false)} />
       </div>

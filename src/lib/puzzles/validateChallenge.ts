@@ -12,10 +12,10 @@ export interface ValidationResult {
   reason?: string
 }
 
-// Each family may export a validator. If absent, the challenge is accepted.
+// Each family may export a validator. If absent, the challenge is accepted
 export type ChallengeValidator = (data: PuzzleSeedData) => ValidationResult
 
-// Registry of per-family validators - populated by family modules.
+// Registry of per-family validators - populated by family modules
 const VALIDATORS = new Map<string, ChallengeValidator>()
 
 export function registerValidator(
@@ -36,7 +36,7 @@ export function validateChallenge(
 
 // Generates a deterministic challenge and retries with derived seeds
 // until family validation passes. Retries remain deterministic so all
-// players receive the same accepted challenge for the same seed.
+// players receive the same accepted challenge for the same seed
 export function generateWithValidation(
   baseSeed: string,
   family: PuzzleFamilyDefinition,
@@ -56,7 +56,7 @@ export function generateWithValidation(
   )
 }
 
-// Validates that the generated grid can be completed within the charge limit.
+// Validates that the generated grid can be completed within the charge limit
 export interface DepthsGridCell {
   isDeposit: boolean
   isClue: boolean
@@ -94,18 +94,19 @@ export function validateDepthsSolvability(
           const dr = y - r
           const dc = x - c
           const d = Math.abs(dr) + Math.abs(dc)
+          // In multi-deposit grids, distance V means no deposit can exist at distance < V
           if (clueType === 'numeric') {
-            if (d !== clue.clueValue) possible[y][x] = false
-          } else if (clueType === 'hot_cold') {
-            const band = d === 1 ? 'HOT' : d <= 3 ? 'WARM' : 'COLD'
-            if (band !== clue.clueValue) possible[y][x] = false
-          } else if (clueType === 'directional') {
-            if (d === 0 || arrowOf(dr, dc) !== clue.clueValue) {
+            if (typeof clue.clueValue === 'number' && d < clue.clueValue) {
               possible[y][x] = false
             }
+          } else if (clueType === 'hot_cold') {
+            if (clue.clueValue === 'COLD' && d <= 3) possible[y][x] = false
+            if (clue.clueValue === 'WARM' && d <= 1) possible[y][x] = false
+          } else if (clueType === 'directional') {
+            if (d === 0) possible[y][x] = false
           } else if (clueType === 'adjacency_count') {
             // A zero count eliminates its neighborhood outright; higher
-            // counts constrain combinations, not single tiles.
+            // counts constrain combinations, not single tiles
             if (
               clue.clueValue === 0 &&
               Math.abs(dr) <= 1 &&
@@ -119,10 +120,13 @@ export function validateDepthsSolvability(
     }
   }
   const remaining = possible.flat().filter(Boolean).length
-  if (remaining > chargeLimit) {
-    return {
-      valid: false,
-      reason: `Unsolvable: ${remaining} possible tiles but only ${chargeLimit} charges`
+  // Complex clue types rely on multi-clue reasoning, so skip naive elimination checks
+  if (clueType !== 'directional' && clueType !== 'hot_cold') {
+    if (remaining > chargeLimit) {
+      return {
+        valid: false,
+        reason: `Unsolvable: ${remaining} possible tiles but only ${chargeLimit} charges`
+      }
     }
   }
   const depositsPossible = grid.every((row, r) =>

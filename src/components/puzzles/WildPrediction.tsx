@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { TrialBanner } from '@/components/trial/TrialBanner'
+import { StartCountdownOverlay } from '@/components/layout/StartCountdownOverlay'
 import { useSound } from '@/hooks/useSound'
 import type { WildPredictionData } from '@/lib/puzzles/families/wildPrediction'
 import type {
@@ -46,7 +47,7 @@ function ShapeIcon({
   size: string
   className?: string
 }) {
-  const px = size === 'small' ? 20 : size === 'medium' ? 28 : 36
+  const px = size === 'small' ? 16 : size === 'medium' ? 28 : 40
   const fill = COLOR_MAP[color] ?? '#e8edf4'
 
   const svgProps = {
@@ -286,19 +287,21 @@ export function WildPrediction({
     () => savedSession?.incorrectGuesses ?? 0
   )
   const [timeLeft, setTimeLeft] = useState<number | null>(data.timerSeconds)
+  const [isStarting, setIsStarting] = useState(() => !savedSession)
 
   const sessionStartRef = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
   const roundStartRef = useRef(Date.now())
   const responseMsRef = useRef<number[]>(savedSession?.responseMsList ?? [])
   const correctRoundsRef = useRef(savedSession?.correctRounds ?? 0)
   const totalErrorsRef = useRef(savedSession?.totalErrors ?? 0)
+  const finishedRef = useRef(false)
 
   const currentRound: CipherRound | undefined = data.rounds[roundIndex]
+  const roundTimeLimit = data.timerSeconds ?? 12
 
-  const roundTimeLimit = data.timerSeconds ?? 20
-
-  // Per-round countdown timer
+  // Per-round countdown timer; waits for the ready-up countdown on session start
   useEffect(() => {
+    if (isStarting) return
     let initialTime = roundTimeLimit
     if (
       savedSession &&
@@ -310,43 +313,21 @@ export function WildPrediction({
       )
       initialTime = Math.max(0, roundTimeLimit - elapsedSec)
     }
-
     setTimeLeft(initialTime)
     roundStartRef.current = Date.now()
-
     if (initialTime <= 0) {
       totalErrorsRef.current++
       responseMsRef.current.push(roundTimeLimit * 1000)
       advanceRound(false)
       return
     }
-
+    // Pure updater: side effects live in the timeLeft watcher so the
+    // tick and the round advance fire exactly once per second boundary
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev !== null && prev <= 3 && prev > 1) {
-          play('timer-tick')
-        }
-        if (prev === null || prev <= 1) {
-          clearInterval(interval)
-          // Time up - count as incorrect, advance
-          totalErrorsRef.current++
-          responseMsRef.current.push(roundTimeLimit * 1000)
-          advanceRound(false)
-          return null
-        }
-        return prev - 1
-      })
+      setTimeLeft((prev) => (prev === null || prev <= 0 ? prev : prev - 1))
     }, 1000)
-
     return () => clearInterval(interval)
-  }, [roundIndex, roundTimeLimit])
-  
-  // Urgency tick on each of the final three seconds of a timed round
-  useEffect(() => {
-    if (timeLeft !== null && timeLeft <= 3 && timeLeft > 0) {
-      play('timer-tick')
-    }
-  }, [timeLeft, play])
+  }, [roundIndex, roundTimeLimit, isStarting, savedSession])
 
   // Save turn-based state to localStorage
   useEffect(() => {
@@ -381,6 +362,8 @@ export function WildPrediction({
 
         const nextIndex = roundIndex + 1
         if (nextIndex >= data.rounds.length) {
+          if (finishedRef.current) return
+          finishedRef.current = true
           try {
             localStorage.removeItem('arkalon_daily_cipher_session')
           } catch {}
@@ -410,9 +393,25 @@ export function WildPrediction({
     [roundIndex, data.rounds.length, data.timerSeconds, onComplete]
   )
 
+  // Urgency tick on each of the final three seconds of a timed round
+  useEffect(() => {
+    if (isStarting || feedback !== null) return
+    if (timeLeft === null || timeLeft > 3) return
+    if (timeLeft > 0) {
+      play('timer-tick')
+      return
+    }
+    if (timeLeft === 0) {
+      // Time up - count as incorrect, advance
+      totalErrorsRef.current++
+      responseMsRef.current.push(roundTimeLimit * 1000)
+      advanceRound(false)
+    }
+  }, [timeLeft, isStarting, feedback, play, roundTimeLimit, advanceRound])
+
   const handleChoice = useCallback(
     (index: number) => {
-      if (feedback !== null || !currentRound) return
+      if (finishedRef.current || feedback !== null || !currentRound) return
 
       const responseMs = Date.now() - roundStartRef.current
       responseMsRef.current.push(responseMs)
@@ -435,11 +434,8 @@ export function WildPrediction({
         setFeedback('incorrect')
         totalErrorsRef.current++
         setIncorrectGuesses((p) => p + 1)
-        // Brief shake then clear selection for retry
-        setTimeout(() => {
-          setFeedback(null)
-          setSelectedIndex(null)
-        }, 600)
+        // Fail the round, reveal answer, and advance
+        advanceRound(false)
       }
     },
     [feedback, currentRound, play, advanceRound]
@@ -468,7 +464,16 @@ export function WildPrediction({
       </div>
 
       {/* Puzzle surface */}
-      <div className="w-full rounded-xl border border-border-subtle bg-surface-panel p-4">
+      <div className="relative w-full rounded-xl border border-border-subtle bg-surface-panel p-4">
+        {isStarting && (
+          <StartCountdownOverlay
+            onComplete={() => {
+              sessionStartRef.current = Date.now()
+              roundStartRef.current = Date.now()
+              setIsStarting(false)
+            }}
+          />
+        )}
         <RoundDisplay round={currentRound} />
 
         {/* Choice grid */}
@@ -480,17 +485,27 @@ export function WildPrediction({
           role="group"
           aria-label="Answer choices"
         >
-          {currentRound.choices.map((choice, i) => (
-            <ElementCard
-              key={i}
-              element={choice}
-              onClick={() => handleChoice(i)}
-              selected={selectedIndex === i}
-              correct={feedback === 'correct' && selectedIndex === i}
-              incorrect={feedback === 'incorrect' && selectedIndex === i}
-              disabled={feedback === 'correct'}
-            />
-          ))}
+          {currentRound.choices.map((choice, i) => {
+            const isAnswer =
+              choice.shape === currentRound.correctAnswer.shape &&
+              choice.color === currentRound.correctAnswer.color &&
+              choice.size === currentRound.correctAnswer.size
+
+            return (
+              <ElementCard
+                key={i}
+                element={choice}
+                onClick={() => handleChoice(i)}
+                selected={selectedIndex === i}
+                correct={
+                  (feedback === 'correct' && selectedIndex === i) ||
+                  (feedback === 'incorrect' && isAnswer)
+                }
+                incorrect={feedback === 'incorrect' && selectedIndex === i}
+                disabled={feedback !== null}
+              />
+            )
+          })}
         </div>
       </div>
 

@@ -34,7 +34,13 @@ interface CachedPuzzlePayload {
   puzzleInfo: DailyPuzzleInfo
   seedData: PuzzleSeedData
 }
-const dailyChallengeCache = new Map<string, CachedPuzzlePayload>()
+
+const globalForCache = globalThis as unknown as {
+  dailyChallengeCache?: Map<string, CachedPuzzlePayload>
+}
+const dailyChallengeCache =
+  globalForCache.dailyChallengeCache ?? new Map<string, CachedPuzzlePayload>()
+globalForCache.dailyChallengeCache = dailyChallengeCache
 
 export async function clearDailyChallengeCache(): Promise<void> {
   dailyChallengeCache.clear()
@@ -64,13 +70,13 @@ export async function getDailyChallenge(
         family_specific_metrics: Record<string, unknown>
       }>(
         `SELECT normalized_score, family_specific_metrics
-         FROM daily_results
-         WHERE player_id = $1 AND puzzle_date = $2 AND category = $3`,
+          FROM daily_results
+          WHERE player_id = $1 AND puzzle_date = $2 AND category = $3`,
         [playerId, todayUtc, category]
       ),
       pool.query<{ current_streak: number }>(
         `SELECT current_streak FROM category_streaks
-         WHERE player_id = $1 AND category = $2`,
+          WHERE player_id = $1 AND category = $2`,
         [playerId, category]
       )
     ])
@@ -81,8 +87,9 @@ export async function getDailyChallenge(
     const player = playerRow.rows[0]
     const streakDays = streakRow.rows[0]?.current_streak ?? 0
 
-    // 2. Resolve today's validated challenge data from memory cache or database
-    let challenge = dailyChallengeCache.get(cacheKey)
+    // 2. Resolve challenge data (bypasses memory cache in development so rotations apply instantly)
+    const isDev = process.env.NODE_ENV === 'development'
+    let challenge = isDev ? null : dailyChallengeCache.get(cacheKey)
 
     if (!challenge) {
       const puzzleRow = await pool.query<{
@@ -93,8 +100,8 @@ export async function getDailyChallenge(
         seed: string
       }>(
         `SELECT puzzle_date::text, category, puzzle_family_id, family_index, seed
-         FROM daily_puzzles
-         WHERE puzzle_date = $1 AND category = $2`,
+          FROM daily_puzzles
+          WHERE puzzle_date = $1 AND category = $2`,
         [todayUtc, category]
       )
 

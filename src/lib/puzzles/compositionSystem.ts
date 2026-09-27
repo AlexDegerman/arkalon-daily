@@ -75,14 +75,14 @@ export function calcChargeLimit(
 ): number {
   const clueTypePenalty: Record<ClueTypeId, number> = {
     numeric: 0,
-    directional: 1,
+    directional: 2,
     adjacency_count: 1,
-    hot_cold: 2
+    hot_cold: 3
   }
   return (
     depositCount +
     clueTypePenalty[clueType] +
-    Math.floor(gridSize * gridSize * 0.12)
+    Math.floor(gridSize * gridSize * 0.08)
   )
 }
 
@@ -94,6 +94,79 @@ export function calcClueTileCount(
   return gridSize + depositCount
 }
 
+// Manhattan distance between two grid positions
+export function manhattan(
+  r1: number,
+  c1: number,
+  r2: number,
+  c2: number
+): number {
+  return Math.abs(r1 - r2) + Math.abs(c1 - c2)
+}
+
+// Returns the clue value for a clue tile at (row, col) given deposit positions
+export function computeClueValue(
+  row: number,
+  col: number,
+  deposits: { row: number; col: number }[],
+  clueType: ClueTypeId,
+  gridSize: number
+): string | number {
+  switch (clueType) {
+    case 'numeric': {
+      const minDist = Math.min(
+        ...deposits.map((d) => manhattan(row, col, d.row, d.col))
+      )
+      return minDist
+    }
+    case 'directional': {
+      const sorted = [...deposits].sort((a, b) => {
+        const da = manhattan(row, col, a.row, a.col)
+        const db = manhattan(row, col, b.row, b.col)
+        if (da !== db) return da - db
+        if (a.col !== b.col) return a.col - b.col
+        return a.row - b.row
+      })
+      const nearest = sorted[0]
+      if (!nearest) return '?'
+      const dr = nearest.row - row
+      const dc = nearest.col - col
+      if (dr === 0 && dc === 0) return '\u25C6'
+      const angle = Math.atan2(dr, dc) * (180 / Math.PI)
+      if (angle >= -22.5 && angle < 22.5) return '\u2192'
+      if (angle >= 22.5 && angle < 67.5) return '\u2198'
+      if (angle >= 67.5 && angle < 112.5) return '\u2193'
+      if (angle >= 112.5 && angle < 157.5) return '\u2199'
+      if (angle >= 157.5 || angle < -157.5) return '\u2190'
+      if (angle >= -157.5 && angle < -112.5) return '\u2196'
+      if (angle >= -112.5 && angle < -67.5) return '\u2191'
+      return '\u2197'
+    }
+    case 'hot_cold': {
+      const minDist = Math.min(
+        ...deposits.map((d) => manhattan(row, col, d.row, d.col))
+      )
+      if (minDist <= 1) return 'HOT'
+      if (minDist <= 3) return 'WARM'
+      return 'COLD'
+    }
+    case 'adjacency_count': {
+      let count = 0
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue
+          const nr = row + dr
+          const nc = col + dc
+          if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
+            if (deposits.some((d) => d.row === nr && d.col === nc)) count++
+          }
+        }
+      }
+      return count
+    }
+  }
+}
+
 // Spawn interval at time t (ms) for each Surge timing profile
 export function calcSpawnInterval(
   profile: TimingProfileId,
@@ -103,33 +176,33 @@ export function calcSpawnInterval(
   const t = tMs / 1000
   switch (profile) {
     case 'ramp': {
-      // Linear decrease 800 -> 500 over 60s
+      // Linear decrease 520 -> 240 over 60s
       const progress = Math.min(1, t / 60)
-      return 800 - progress * 300
+      return 520 - progress * 280
     }
     case 'sudden_spike':
-      return t < 36 ? 700 : 400
+      return t < 36 ? 420 : 220
     case 'wave':
-      return 600 + 200 * Math.sin((2 * Math.PI * t) / 15)
+      return 360 + 140 * Math.sin((2 * Math.PI * t) / 15)
     case 'endurance':
-      return 500
+      return 320
     case 'pressure':
-      return 500
+      return 260
     case 'mixed': {
       // 15-second segments with seeded interval pick
       const segmentIndex = Math.floor(t / 15)
-      const options = [500, 700, 900]
+      const options = [250, 340, 440]
       return (
         options[Math.floor(seededJitter * options.length) % options.length] ??
-        500
+        340
       )
     }
     case 'slow_short':
-      return 800
+      return 420
     case 'fast_long':
-      return 700
+      return 320
     default:
-      return 500
+      return 320
   }
 }
 
@@ -163,14 +236,32 @@ export function calcReticleX(
         STRIKE_TRACK_WIDTH,
         Math.max(
           0,
-          base + 40 * Math.sin(7.3 * tSec) + 25 * Math.sin(13.1 * tSec)
+          base + 10 * Math.sin(7.3 * tSec) + 6 * Math.sin(13.1 * tSec)
         )
       )
     }
+    case 'pendulum': {
+      // Harmonic gravity oscillation: sweeps entire track width, whipping fast through the center
+      const omega = (speedMultiplier * 200) / 260
+      const theta = omega * tSec
+      return 300 - 260 * Math.cos(theta)
+    }
+    case 'staccato': {
+      // Stepper motor pulse: rapid 250ms bursts followed by 150ms stutter-pauses
+      const cyclePeriod = 0.4
+      const scaledT = tSec * speedMultiplier
+      const cycleT = scaledT % cyclePeriod
+      const stepIndex = Math.floor(scaledT / cyclePeriod)
+      const stepDistance = 45
+      const burstFraction = Math.min(1.0, cycleT / 0.25)
+      const totalTraveled = (stepIndex + burstFraction) * stepDistance
+      const trackSpan = STRIKE_TRACK_WIDTH * 2
+      const pos = totalTraveled % trackSpan
+      return pos <= STRIKE_TRACK_WIDTH ? pos : trackSpan - pos
+    }
     case 'deceptive': {
-      // Simplified: linear until 60px before target center, then deceptive sequence.
-      // Full deceptive logic is driven per-shot in the Strike component; here
-      // we return the base linear position used for non-deceptive phases.
+      // Deceptive movement is handled per-shot in Strike component.
+      // Use linear movement during the base phase.
       return calcReticleX('linear', tSec, speedMultiplier, freqHz)
     }
     default:

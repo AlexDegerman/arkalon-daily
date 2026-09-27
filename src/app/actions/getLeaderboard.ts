@@ -189,7 +189,8 @@ async function getDailyCategoryLeaderboard(
 ): Promise<LeaderboardResult> {
   const date = puzzleDate ?? getUtcDateString()
   const cacheKey = `daily:${category}:${date}`
-  const cached = dailyBoardCache.get(cacheKey)
+  const isDev = process.env.NODE_ENV === 'development'
+  const cached = isDev ? null : dailyBoardCache.get(cacheKey)
 
   try {
     let boardEntries: LeaderboardEntry[]

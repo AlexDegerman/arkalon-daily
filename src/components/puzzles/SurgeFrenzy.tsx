@@ -33,6 +33,16 @@ interface ActiveNode extends SurgeNode {
   expiresAtMs: number
   currentRadius: number
   opacity: number
+  currentX?: number
+  currentY?: number
+}
+
+interface FloatingGrade {
+  id: number
+  x: number
+  y: number
+  label: string
+  cls: string
 }
 
 interface SurgeFrenzyProps {
@@ -81,20 +91,19 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
   const { play } = useSound()
   const pauseSignal = usePuzzleStore((s) => s.pauseSignal)
   const containerRef = useRef<HTMLDivElement>(null)
+  const progressBarRef = useRef<HTMLDivElement>(null)
   const scale = useScale(containerRef)
 
   const [savedSession] = useState(() =>
     isTrial ? null : getSavedSurgeSession()
   )
-  const startWallTimeRef = useRef<number>(
-    savedSession?.startWallTime ?? Date.now()
-  )
-
-
+  const startWallTimeRef = useRef<number>(savedSession?.startWallTime ?? 0)
 
   const [isPaused, setIsPaused] = useState(false)
   const [isCountingDown, setIsCountingDown] = useState(() => !savedSession)
   const [activeNodes, setActiveNodes] = useState<ActiveNode[]>([])
+  const [currentCombo, setCurrentCombo] = useState(0)
+  const [floatingGrades, setFloatingGrades] = useState<FloatingGrade[]>([])
 
   // Mutable game state that does not need to trigger re-renders each frame
   const stateRef = useRef({
@@ -123,6 +132,17 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
       localStorage.removeItem('arkalon_daily_surge_session')
     } catch {}
 
+    // Ensure all unhandled nodes are resolved as misses so AFK submissions never fail payload validation
+    const resolvedCount = s.results.length
+    for (let i = resolvedCount; i < data.nodes.length; i++) {
+      const node = data.nodes[i]
+      s.results.push({
+        reactionMs: 0,
+        isDecoy: node.isDecoy,
+        consecutiveHitsAtFire: 0
+      })
+    }
+
     const hits = s.results.filter((n) => !n.isDecoy && n.reactionMs > 0)
     const misses = s.results.filter(
       (n) => !n.isDecoy && n.reactionMs === 0
@@ -134,16 +154,21 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
           )
         : 0
 
+    const safeElapsedMs = Math.max(
+      0,
+      Math.round(s.elapsedMs || data.sessionDurationMs)
+    )
+
     onComplete({
       nodes: s.results,
-      expectedNodeCount: data.expectedNodeCount,
-      totalElapsedMs: Math.round(s.elapsedMs),
+      expectedNodeCount: Math.max(1, data.expectedNodeCount),
+      totalElapsedMs: safeElapsedMs,
       avgReactionMs,
       correctTaps: hits.length,
       misses,
       bestCombo: s.bestCombo
     })
-  }, [data.expectedNodeCount, onComplete])
+  }, [data.expectedNodeCount, data.nodes, data.sessionDurationMs, onComplete])
 
   useEffect(() => {
     if (pauseSignal > 0) setIsPaused(true)
@@ -171,26 +196,46 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     return () => document.removeEventListener('keydown', handleKey)
   }, [])
 
+  const isPausedRef = useRef(isPaused)
+  isPausedRef.current = isPaused
+
   // Track pause time
   useEffect(() => {
     const s = stateRef.current
     if (isPaused) {
       s.pauseStartMs = performance.now()
     } else if (s.pauseStartMs > 0) {
-      s.pausedMs += performance.now() - s.pauseStartMs
+      const pausedDuration = performance.now() - s.pauseStartMs
+      s.pausedMs += pausedDuration
+      // Only shift the wall-clock anchor when the session has actually started
+      // (startMs is set by the rAF effect after countdown). Guarding here
+      // prevents a pause during the 3-2-1 countdown from corrupting the anchor.
+      if (s.startMs > 0 && startWallTimeRef.current > 0) {
+        startWallTimeRef.current += pausedDuration
+      }
       s.pauseStartMs = 0
     }
   }, [isPaused])
 
-  // Main rAF loop
+  // Main rAF loop: only runs after countdown completes
   useEffect(() => {
+    if (isCountingDown) return
+
     const s = stateRef.current
+    if (startWallTimeRef.current === 0) {
+      startWallTimeRef.current = Date.now()
+    }
+
     const initialElapsed = isTrial
       ? 0
       : Math.max(0, Date.now() - startWallTimeRef.current)
 
     s.startMs = performance.now() - initialElapsed
     s.elapsedMs = initialElapsed
+    // initialElapsed already excludes pause time (startWallTimeRef was
+    // shifted on each unpause). Reset pausedMs so the rAF loop does not
+    // subtract the same pause duration a second time.
+    s.pausedMs = 0
 
     if (savedSession) {
       s.results = [...savedSession.results]
@@ -199,18 +244,11 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     }
 
     if (initialElapsed >= data.sessionDurationMs) {
-      while (s.results.length < data.nodes.length) {
-        const node = data.nodes[s.results.length]
-        s.results.push({
-          reactionMs: 0,
-          isDecoy: node.isDecoy,
-          consecutiveHitsAtFire: 0
-        })
-      }
       finishSession()
       return
     }
 
+    // Fast-forward missed nodes if resuming mid-session
     if (initialElapsed > 0) {
       const initialActive: ActiveNode[] = []
       let i = s.results.length
@@ -255,27 +293,20 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
 
     function tick(now: number) {
       if (s.finished) return
-      if (isPaused || isCountingDown) {
+      if (isPausedRef.current) {
         rafRef.current = requestAnimationFrame(tick)
         return
       }
 
       const elapsed = now - s.startMs - s.pausedMs
       s.elapsedMs = elapsed
+      if (progressBarRef.current) {
+        progressBarRef.current.style.width = `${Math.min(100, (elapsed / data.sessionDurationMs) * 100)}%`
+      }
 
       if (elapsed >= data.sessionDurationMs) {
         play('surge-end')
-        // Session ended - expire remaining active nodes as misses
-        setActiveNodes((prev) => {
-          prev.forEach((n) => {
-            s.results.push({
-              reactionMs: 0,
-              isDecoy: n.isDecoy,
-              consecutiveHitsAtFire: 0
-            })
-          })
-          return []
-        })
+        setActiveNodes([])
         finishSession()
         return
       }
@@ -300,7 +331,10 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
               consecutiveHitsAtFire: 0
             })
             s.activeNodeIds.delete(oldest.id)
-            s.consecutiveHits = 0
+            if (!oldest.isDecoy) {
+              s.consecutiveHits = 0
+              setCurrentCombo(0)
+            }
             next = next.slice(1)
           }
           return [
@@ -323,20 +357,38 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
           const progress = age / n.lifetimeMs
 
           if (progress >= 1) {
-            // Expired - miss
             s.results.push({
               reactionMs: 0,
               isDecoy: n.isDecoy,
               consecutiveHitsAtFire: 0
             })
             s.activeNodeIds.delete(n.id)
-            s.consecutiveHits = 0
+            if (!n.isDecoy) {
+              s.consecutiveHits = 0
+              setCurrentCombo(0)
+            }
             continue
           }
 
           // Apply behavior mutations
           let radius = n.initialRadius
           let opacity = 1
+          let currentX = n.x
+          let currentY = n.y
+
+          if (data.spawnPattern === 'spiral') {
+            const dx = n.x - 300
+            const dy = n.y - 200
+            const dist = Math.hypot(dx, dy)
+            const angle = Math.atan2(dy, dx) + progress * 1.4
+            const r = Math.max(20, dist * (1 - progress * 0.35))
+            currentX = 300 + r * Math.cos(angle)
+            currentY = 200 + r * Math.sin(angle)
+          } else if (data.spawnPattern === 'wave') {
+            currentY = n.y + 30 * Math.sin(progress * Math.PI * 2)
+          } else if (n.behavior === 'moving') {
+            currentX = n.x + 35 * progress
+          }
 
           if (n.behavior === 'fading') opacity = 1 - progress
           if (n.behavior === 'shrinking')
@@ -346,7 +398,13 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
           if (n.behavior === 'brief')
             opacity = progress > 0.5 ? 1 - (progress - 0.5) * 2 : 1
 
-          alive.push({ ...n, currentRadius: radius, opacity })
+          alive.push({
+            ...n,
+            currentRadius: radius,
+            currentX,
+            currentY,
+            opacity
+          })
         }
         return alive
       })
@@ -356,31 +414,69 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
 
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [data, isPaused, finishSession])
+  }, [data, isCountingDown, finishSession, isTrial, savedSession])
+
+  const hoveredNodeRef = useRef<ActiveNode | null>(null)
 
   const handleNodeTap = useCallback(
-    (node: ActiveNode, e: React.MouseEvent | React.TouchEvent) => {
-      e.stopPropagation()
+    (node: ActiveNode, e?: React.MouseEvent | React.TouchEvent) => {
+      e?.stopPropagation()
       const s = stateRef.current
       if (s.finished || isPaused) return
       if (!s.activeNodeIds.has(node.id)) return
 
-      const reactionMs = Math.round(s.elapsedMs - node.spawnAtMs)
+      const reactionMs = Math.max(0, Math.round(s.elapsedMs - node.spawnAtMs))
+      const px = (node.currentX ?? node.x) * scale
+      const py = (node.currentY ?? node.y) * scale
+
+      let gradeLabel = 'LATE'
+      let gradeCls = 'g-vg'
 
       if (node.isDecoy) {
         play('decoy-hit')
         s.consecutiveHits = 0
+        setCurrentCombo(0)
+        gradeLabel = 'DECOY -2'
+        gradeCls = 'text-status-fail font-mono font-black'
         s.results.push({ reactionMs, isDecoy: true, consecutiveHitsAtFire: 0 })
       } else {
-        play('node-hit')
+        // Dynamic pitch shifting: audio pitches up as combo climbs
+        const pitchMultiplier = 1.0 + Math.min(s.consecutiveHits * 0.025, 0.5)
+        play('node-hit', { playbackRate: pitchMultiplier })
         s.consecutiveHits++
+
+        if (reactionMs < 300) {
+          gradeLabel = 'PERFECT'
+          gradeCls = 'g-ntg font-mono font-black'
+        } else if (reactionMs < 450) {
+          gradeLabel = 'FAST'
+          gradeCls = 'title-surge font-mono font-black'
+        } else if (reactionMs < 650) {
+          gradeLabel = 'GOOD'
+          gradeCls = 'text-[#a78bfa] font-mono font-bold'
+        } else if (reactionMs < 900) {
+          gradeLabel = 'OK'
+          gradeCls = 'text-[#60a5fa] font-mono font-bold'
+        }
+
         s.bestCombo = Math.max(s.bestCombo, s.consecutiveHits)
+        setCurrentCombo(s.consecutiveHits)
         s.results.push({
           reactionMs,
           isDecoy: false,
-          consecutiveHitsAtFire: s.consecutiveHits - 1
+          consecutiveHitsAtFire: Math.max(0, s.consecutiveHits - 1)
         })
       }
+
+      // Spawn floating feedback tag at tap point
+      const gradeId = Math.random()
+      setFloatingGrades((prev) => [
+        ...prev,
+        { id: gradeId, x: px, y: py, label: gradeLabel, cls: gradeCls }
+      ])
+      setTimeout(() => {
+        setFloatingGrades((prev) => prev.filter((g) => g.id !== gradeId))
+      }, 400)
 
       s.activeNodeIds.delete(node.id)
       setActiveNodes((prev) => prev.filter((n) => n.id !== node.id))
@@ -399,8 +495,25 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
         } catch {}
       }
     },
-    [isPaused, play, isTrial]
+    [isPaused, play, isTrial, scale]
   )
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.repeat || isPaused || isCountingDown) return
+      const key = e.key.toLowerCase()
+      if (key === 'z' || key === 'x' || key === ' ' || e.code === 'Space') {
+        e.preventDefault()
+        const target = hoveredNodeRef.current
+        if (target && stateRef.current.activeNodeIds.has(target.id)) {
+          handleNodeTap(target)
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isPaused, isCountingDown, handleNodeTap])
 
   useEffect(() => {
     if (isTrial) return
@@ -423,26 +536,53 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
     return () => window.removeEventListener('beforeunload', persist)
   }, [isTrial])
 
-  const progressPct = Math.min(
-    100,
-    (stateRef.current.elapsedMs / data.sessionDurationMs) * 100
-  )
-
   return (
     <div className="flex w-full flex-col gap-3">
       {isTrial && <TrialBanner />}
 
-      {/* Progress bar */}
-      <div className="h-1 w-full overflow-hidden rounded-full bg-border-subtle">
-        <div
-          className="h-full rounded-full bg-accent-surge transition-none"
-          style={{ width: `${progressPct}%` }}
-          role="progressbar"
-          aria-valuenow={Math.round(progressPct)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Session progress"
-        />
+      <div className="flex items-center justify-between text-xs text-text-muted font-mono">
+        <span className="font-bold tracking-wider uppercase text-[11px] text-accent-surge">
+          {data.spawnPattern.replace(/_/g, ' ')}
+        </span>
+        <span className="text-[10px] text-text-muted uppercase tracking-wider">
+          {data.timingProfile.replace(/_/g, ' ')}
+        </span>
+      </div>
+
+      {/* Telemetry Bar: Progress + Live Combo HUD */}
+      <div className="flex items-center justify-between gap-3 text-xs font-mono">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-subtle">
+          <div
+            ref={progressBarRef}
+            className="h-full rounded-full bg-accent-surge"
+            style={{ width: '0%' }}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Session progress"
+          />
+        </div>
+
+        {/* Live Combo HUD */}
+        <div className="shrink-0 flex items-center min-w-16 justify-end">
+          {currentCombo >= 5 ? (
+            <span className="flex items-center gap-1 font-black g-ttr animate-pulse text-[11px]">
+              <span>🔥</span>
+              <span>{currentCombo} COMBO</span>
+              {currentCombo >= 10 && (
+                <span className="text-[9px] text-accent-surge font-bold">
+                  (1.5x)
+                </span>
+              )}
+            </span>
+          ) : currentCombo > 0 ? (
+            <span className="text-text-muted font-bold text-[10px]">
+              {currentCombo} COMBO
+            </span>
+          ) : (
+            <span className="text-text-muted/40 text-[10px]">NO COMBO</span>
+          )}
+        </div>
       </div>
 
       {/* Play area */}
@@ -452,20 +592,47 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
         style={{ aspectRatio: '600 / 400', touchAction: 'none' }}
         aria-label="Surge Frenzy play area"
       >
+        {data.spawnPattern === 'lane_switch' && (
+          <div className="absolute inset-0 pointer-events-none flex flex-col justify-around py-8 opacity-25">
+            <div className="border-b border-dashed border-accent-surge w-full" />
+            <div className="border-b border-dashed border-accent-surge w-full" />
+            <div className="border-b border-dashed border-accent-surge w-full" />
+          </div>
+        )}
+
+        {/* Floating in-the-moment reaction grade tags */}
+        {floatingGrades.map((g) => (
+          <span
+            key={g.id}
+            style={{ left: g.x, top: g.y }}
+            className={`absolute pointer-events-none text-xs select-none z-20 animate-[pop-float_0.4s_ease-out_forwards] ${g.cls}`}
+          >
+            {g.label}
+          </span>
+        ))}
+
         {activeNodes.map((node) => {
-          const px = node.x * scale
-          const py = node.y * scale
-          const r = node.currentRadius * scale
+          const px = (node.currentX ?? node.x) * scale
+          const py = (node.currentY ?? node.y) * scale
+          // Floor visual radius to at least 16px (32px diameter) so orbs remain easily visible on mobile
+          const r = Math.max(16, node.currentRadius * scale)
           const color = node.isDecoy ? '#ff3b5c' : '#00d4ff'
-          const minTapSize = SURGE_NODE_HIT_RADIUS_PX * scale
-          const tapR = Math.max(r, minTapSize / 2)
+          // Enforce 48px minimum physical tap target on all viewports (Apple/Android touch standard)
+          const minPhysicalTapTargetPx = 48
+          const tapR = Math.max(r, minPhysicalTapTargetPx / 2)
 
           return (
             <button
               key={node.id}
-              onClick={(e) => handleNodeTap(node, e)}
-              onTouchStart={(e) => {
-                handleNodeTap(node, e)
+              data-node-id={node.id}
+              onPointerDown={(e) => handleNodeTap(node, e)}
+              onPointerEnter={() => {
+                hoveredNodeRef.current = node
+              }}
+              onPointerLeave={() => {
+                if (hoveredNodeRef.current?.id === node.id) {
+                  hoveredNodeRef.current = null
+                }
               }}
               aria-label={node.isDecoy ? 'Decoy node - avoid' : 'Tap node'}
               style={{
@@ -508,7 +675,9 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
 
       {/* Controls hint */}
       <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>Tap glowing nodes &middot; avoid red decoys</span>
+        <span>
+          Tap glowing nodes (or Space / Z / X) &middot; avoid red decoys
+        </span>
         <button
           onClick={() => setIsPaused(true)}
           aria-label="Pause game"

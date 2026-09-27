@@ -139,7 +139,7 @@ export function LeaderboardRow({
                     <div className="w-11 font-bold text-[#F59E0B]">
                       {entry.streakDays && entry.streakDays > 0
                         ? `\uD83D\uDD25${entry.streakDays}d`
-                        : '—'}
+                        : '-'}
                     </div>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function LeaderboardRow({
                   {entry.streakDays}d
                 </>
               ) : (
-                '—'
+                '-'
               )}
             </td>
           </>

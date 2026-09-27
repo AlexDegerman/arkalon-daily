@@ -57,7 +57,8 @@ const SOUND_MAP: Record<SoundKey, string> = {
 // Sounds missing from this map use the default volume.
 // Add an entry only when a specific effect needs attenuation.
 const VOLUME_MULTIPLIERS: Partial<Record<SoundKey, number>> = {
-  'mark-tile': 0.6
+  'mark-tile': 0.6,
+  'surge-end': 0.6
 }
 
 // Standard HTML5 Audio pool for non-rapid sounds
@@ -110,7 +111,7 @@ async function initPolyAudio(): Promise<void> {
   )
 }
 
-function playPolySound(key: PolyKey, volume: number): void {
+function playPolySound(key: PolyKey, volume: number, playbackRate = 1.0): void {
   const buffer = polyBuffers[key]
   if (!audioCtx || !buffer || !masterGain) return
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {})
@@ -129,6 +130,7 @@ function playPolySound(key: PolyKey, volume: number): void {
 
   const source = audioCtx.createBufferSource()
   source.buffer = buffer
+  source.playbackRate.value = playbackRate
   const instanceGain = audioCtx.createGain()
   instanceGain.gain.value = volume
   source.connect(instanceGain)
@@ -157,48 +159,61 @@ export function useSound() {
     sfxVolumeRef.current = sfxVolume
   }, [sfxVolume])
 
-  // Pre-decode the polyphonic buffer on first interaction
+  // Pre-decode the polyphonic buffer on mount and unlock on interaction
   useEffect(() => {
-    const init = () => {
-      initPolyAudio()
-      document.removeEventListener('pointerdown', init)
-    }
-    document.addEventListener('pointerdown', init)
-    return () => document.removeEventListener('pointerdown', init)
-  }, [])
-
-  const play = useCallback((key: SoundKey) => {
-    if (!sfxEnabledRef.current || typeof window === 'undefined') return
-    const vol = Math.min(
-      1,
-      sfxVolumeRef.current * (VOLUME_MULTIPLIERS[key] ?? 1)
-    )
-
-    // Route rapid-tap sounds through the Web Audio API polyphony engine
-    if (POLY_KEYS.includes(key as PolyKey)) {
-      playPolySound(key as PolyKey, vol)
-      return
-    }
-
-    // Standard pool for everything else
-    let pool = poolRef.get(key)
-    if (!pool) {
-      const elements: HTMLAudioElement[] = []
-      for (let i = 0; i < POOL_SIZE; i++) {
-        const audio = new Audio(SOUND_MAP[key])
-        audio.preload = 'none'
-        elements.push(audio)
+    initPolyAudio()
+    const unlock = () => {
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {})
       }
-      pool = { elements, index: 0 }
-      poolRef.set(key, pool)
     }
-
-    const audio = pool.elements[pool.index % POOL_SIZE]
-    pool.index = (pool.index + 1) % POOL_SIZE
-    audio.currentTime = 0
-    audio.volume = vol
-    audio.play().catch(() => {})
+    const events = ['pointerdown', 'keydown', 'touchstart'] as const
+    events.forEach((e) =>
+      document.addEventListener(e, unlock, { passive: true })
+    )
+    return () => {
+      events.forEach((e) => document.removeEventListener(e, unlock))
+    }
   }, [])
+
+  const play = useCallback(
+    (key: SoundKey, options?: { playbackRate?: number }) => {
+      if (!sfxEnabledRef.current || typeof window === 'undefined') return
+      const vol = Math.min(
+        1,
+        sfxVolumeRef.current * (VOLUME_MULTIPLIERS[key] ?? 1)
+      )
+
+      // Route rapid-tap sounds through the Web Audio API polyphony engine
+      if (POLY_KEYS.includes(key as PolyKey)) {
+        if (audioCtx && polyBuffers[key as PolyKey]) {
+          playPolySound(key as PolyKey, vol, options?.playbackRate ?? 1.0)
+          return
+        }
+        // Fall through to standard pool if buffer is still decoding so sound is never dropped
+      }
+
+      // Standard pool for everything else
+      let pool = poolRef.get(key)
+      if (!pool) {
+        const elements: HTMLAudioElement[] = []
+        for (let i = 0; i < POOL_SIZE; i++) {
+          const audio = new Audio(SOUND_MAP[key])
+          audio.preload = 'none'
+          elements.push(audio)
+        }
+        pool = { elements, index: 0 }
+        poolRef.set(key, pool)
+      }
+
+      const audio = pool.elements[pool.index % POOL_SIZE]
+      pool.index = (pool.index + 1) % POOL_SIZE
+      audio.currentTime = 0
+      audio.volume = vol
+      audio.play().catch(() => {})
+    },
+    []
+  )
 
   return { play }
 }

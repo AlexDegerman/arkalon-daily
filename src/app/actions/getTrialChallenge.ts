@@ -54,58 +54,68 @@ export async function getTrialChallenge(
       const hasDecoy = (
         (seedData.familyData as { nodes?: { isDecoy: boolean }[] }).nodes ?? []
       ).some((n) => n.isDecoy)
-      // Reject splitting behavior and fast_long timing to keep first attempts accessible.
+      // Reject splitting behavior and extreme pacing to keep first attempts accessible.
       const profile = seedData.profile as {
         targetBehavior?: string
         timingProfile?: string
       }
       const isSafeDifficulty =
         profile.targetBehavior !== 'splitting' &&
-        profile.timingProfile !== 'fast_long'
+        (profile.timingProfile === 'ramp' ||
+          profile.timingProfile === 'wave' ||
+          profile.timingProfile === 'slow_short')
       acceptable = hasDecoy && isSafeDifficulty
     }
 
     if (category === 'strike') {
-      // Reject deceptive motion because feints are reserved for daily challenges.
+      // Restrict trial to smooth, predictable motion with wide windows and moderate speeds.
       const profile = seedData.profile as {
         motionFunction?: string
         targetWindowPx?: number
+        movementSpeed?: number
       }
-      // Require a minimum target window for first-contact playability.
       acceptable =
-        profile.motionFunction !== 'deceptive' &&
-        (profile.targetWindowPx ?? 0) >= 40
+        (profile.motionFunction === 'sinusoidal' ||
+          profile.motionFunction === 'linear') &&
+        (profile.targetWindowPx ?? 0) >= 50 &&
+        (profile.movementSpeed ?? 0) <= 1.6
     }
 
     if (category === 'recall') {
-      // Reverse entry is reserved for daily challenges and is not covered by the trial explainer.
-      const familyData = seedData.familyData as { reverseEntry?: boolean }
-      acceptable = !familyData.reverseEntry
+      // Stable, unshuffled keypad and forward sequence only for first-contact onboarding.
+      const familyData = seedData.familyData as {
+        reverseEntry?: boolean
+        randomizedLayout?: boolean
+      }
+      const profile = seedData.profile as { sequenceLength?: number }
+      acceptable =
+        !familyData.reverseEntry &&
+        !familyData.randomizedLayout &&
+        (profile.sequenceLength ?? 0) <= 8
     }
 
     if (category === 'cipher') {
-      // Reject advanced generators that use different interaction patterns.
-      // The trial uses the standard sequence puzzle format..
+      // Untimed standard sequence matching so new players can study colors and shapes without timer panic.
       const familyData = seedData.familyData as {
         rounds?: { generator: string }[]
       }
+      const profile = seedData.profile as { timerSeconds?: number | null }
       const hasComplexGenerator = (familyData.rounds ?? []).some(
         (r) =>
           r.generator === 'rule_discovery' ||
           r.generator === 'constrained_choice'
       )
-      acceptable = !hasComplexGenerator
+      acceptable = !hasComplexGenerator && profile.timerSeconds === null
     }
 
     if (category === 'depths') {
-      // Trial uses numeric clues because the explainer describes distance-based clues.
-      // Limit grid size to keep the first puzzle readable.
+      // Trial locked strictly to a 5x5 grid with numeric clues for instant readability.
       const profile = seedData.profile as {
         clueType?: string
         gridSize?: number
       }
       acceptable =
-        profile.clueType === 'numeric' && (profile.gridSize ?? 5) <= 6
+        profile.clueType === 'numeric' && (profile.gridSize ?? 5) === 5
     }
 
     if (acceptable) break

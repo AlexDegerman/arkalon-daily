@@ -37,6 +37,7 @@ export interface SurgeNode {
   spawnAtMs: number // ms from session start
   lifetimeMs: number
   isDecoy: boolean
+  isOvercharge?: boolean
   behavior: TargetBehaviorId
   initialRadius: number // px
 }
@@ -76,10 +77,8 @@ function generateSpawnSequence(
   let lastLane = -1
 
   while (tMs < sessionDurationMs) {
-    const interval = calcSpawnInterval(timingProfile, tMs, rng())
     // Determine positions based on pattern
     const positions: { x: number; y: number }[] = []
-
     switch (pattern) {
       case 'single': {
         positions.push({
@@ -282,6 +281,54 @@ function generateSpawnSequence(
       x: Math.min(SURGE_PLAY_WIDTH - 40, Math.max(40, p.x)),
       y: Math.min(SURGE_PLAY_HEIGHT - 40, Math.max(40, p.y))
     }))
+    // Enforce minimum separation so simultaneous active nodes never stack.
+    // Two passes handle chain nudges within the same burst.
+    const MIN_SEP = 56
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < clamped.length; i++) {
+        const spawnAt = tMs + i * SURGE_BURST_STAGGER_MS
+        // Check against previously generated nodes still alive at spawnAt
+        for (const prev of nodes) {
+          if (spawnAt < prev.spawnAtMs + prev.lifetimeMs) {
+            const dx = clamped[i].x - prev.x
+            const dy = clamped[i].y - prev.y
+            const dist = Math.hypot(dx, dy)
+            if (dist < MIN_SEP) {
+              const ang = dist > 0.01 ? Math.atan2(dy, dx) : rng() * Math.PI * 2
+              clamped[i] = {
+                x: Math.min(
+                  SURGE_PLAY_WIDTH - 40,
+                  Math.max(40, prev.x + MIN_SEP * Math.cos(ang))
+                ),
+                y: Math.min(
+                  SURGE_PLAY_HEIGHT - 40,
+                  Math.max(40, prev.y + MIN_SEP * Math.sin(ang))
+                )
+              }
+            }
+          }
+        }
+        // Check against sibling nodes in the same burst
+        for (let j = 0; j < i; j++) {
+          const dx = clamped[i].x - clamped[j].x
+          const dy = clamped[i].y - clamped[j].y
+          const dist = Math.hypot(dx, dy)
+          if (dist < MIN_SEP) {
+            const ang = dist > 0.01 ? Math.atan2(dy, dx) : rng() * Math.PI * 2
+            clamped[i] = {
+              x: Math.min(
+                SURGE_PLAY_WIDTH - 40,
+                Math.max(40, clamped[j].x + MIN_SEP * Math.cos(ang))
+              ),
+              y: Math.min(
+                SURGE_PLAY_HEIGHT - 40,
+                Math.max(40, clamped[j].y + MIN_SEP * Math.sin(ang))
+              )
+            }
+          }
+        }
+      }
+    }
     // Bursts get longer-lived nodes so a group of simultaneous targets
     // stays clickable for the whole group, not just the first node
     const burstScale = Math.min(
@@ -293,10 +340,11 @@ function generateSpawnSequence(
     )
     // Create nodes - occasional decoy injection when hasDecoys enabled
     clamped.forEach((pos, posIdx) => {
-      const spawnAtMs = tMs + posIdx * SURGE_BURST_STAGGER_MS
+      const spawnAtMs = tMs
       // Drop nodes that would appear too close to session end to tap
       if (spawnAtMs > sessionDurationMs - SURGE_MIN_SPAWN_MARGIN_MS) return
       const isDecoy = hasDecoys && posIdx === 0 && rng() < 0.18
+
       nodes.push({
         id: id++,
         x: pos.x,
@@ -308,6 +356,10 @@ function generateSpawnSequence(
         initialRadius: 24
       })
     })
+    // Scale interval by burst size so multi-node patterns don't
+    // spawn proportionally more nodes per second than single patterns
+    const interval =
+      calcSpawnInterval(timingProfile, tMs, rng()) * positions.length
     tMs += interval
     spawnStep++
   }

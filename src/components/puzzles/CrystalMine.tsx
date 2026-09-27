@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { TrialBanner } from '@/components/trial/TrialBanner'
 import { useSound } from '@/hooks/useSound'
+import { computeClueValue } from '@/lib/puzzles/compositionSystem'
 import type {
   CrystalMineData,
   GridCell
@@ -30,6 +31,7 @@ type CellState =
   | 'empty'
   | 'pre-revealed'
   | 'marked'
+  | 'auto-revealed'
 
 function getCellState(
   cell: GridCell,
@@ -46,6 +48,9 @@ function getCellState(
   return 'empty'
 }
 
+// Auto-scan reveal pacing when charges deplete with deposits still buried
+const AUTO_REVEAL_STAGGER_MS = 140
+const AUTO_REVEAL_VIEW_MS = 2200
 interface SavedDepthsSession {
   revealedKeys: string[]
   markedKeys?: string[]
@@ -81,12 +86,17 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
     }
     return new Set()
   })
+  const [activeSonarKey, setActiveSonarKey] = useState<string | null>(null)
+  const [autoRevealKeys, setAutoRevealKeys] = useState<string[]>([])
+
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressFiredRef = useRef(false)
+
   // Deposits revealed at start are free finds - they never cost a charge
   const preRevealedDeposits = data.grid
     .flat()
     .filter((c) => c.isDeposit && c.isRevealed && !c.isClue).length
+
   // Track which non-clue cells have been excavated
   const [revealed, setRevealed] = useState<Set<string>>(() => {
     if (savedSession?.revealedKeys) {
@@ -110,6 +120,19 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   const [finished, setFinished] = useState(false)
   const sessionStartRef = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
 
+  const allDeposits = useMemo(() => {
+    const list: { row: number; col: number }[] = []
+    data.grid.forEach((row) =>
+      row.forEach((c) => {
+        if (c.isDeposit) list.push({ row: c.row, col: c.col })
+      })
+    )
+    return list
+  }, [data.grid])
+
+  const colCounts = data.colCounts ?? []
+  const rowCounts = data.rowCounts ?? []
+
   useEffect(() => {
     return () => {
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
@@ -126,7 +149,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       if (newMarked.has(key)) newMarked.delete(key)
       else {
         newMarked.add(key)
-        play('mark-tile') // RPS cards.wav sounds like placing a physical flag
+        play('mark-tile')
       }
       setMarked(newMarked)
     },
@@ -215,6 +238,17 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         newDepositsFound++
       } else {
         play('dig-empty')
+        // Active Sonar: Reveal distance sensor from the excavated cell
+        cell.isClue = true
+        cell.clueValue = computeClueValue(
+          cell.row,
+          cell.col,
+          allDeposits,
+          'numeric',
+          data.gridSize
+        )
+        setActiveSonarKey(key)
+        setTimeout(() => setActiveSonarKey(null), 900)
       }
 
       setRevealed(newRevealed)
@@ -224,7 +258,6 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       // End conditions: all deposits found or out of charges
       const allFound = newDepositsFound >= data.depositCount
       const outOfCharges = newCharges >= data.chargeLimit
-
       if (allFound || outOfCharges) {
         setFinished(true)
         try {
@@ -241,7 +274,24 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
             : newDepositsFound === data.depositCount
               ? 100
               : 0
-
+        // Charges depleted with deposits still buried: auto-scan reveal so
+        // every miss is visible before the result screen. Display-only -
+        // depositsFound and the score are never touched by the reveal.
+        const remaining = allFound
+          ? []
+          : allDeposits
+              .filter((d) => !newRevealed.has(`${d.row},${d.col}`))
+              .map((d) => `${d.row},${d.col}`)
+            if (remaining.length > 0) {
+              setAutoRevealKeys(remaining)
+              play('incorrect')
+            }
+        const resultDelayMs =
+          remaining.length > 0
+            ? remaining.length * AUTO_REVEAL_STAGGER_MS +
+              600 +
+              AUTO_REVEAL_VIEW_MS
+            : 600
         setTimeout(() => {
           onComplete({
             depositsFound: newDepositsFound,
@@ -251,7 +301,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
             totalElapsedMs,
             efficiencyPct
           })
-        }, 600)
+        }, resultDelayMs)
       }
     },
     [
@@ -260,6 +310,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       chargesUsed,
       depositsFound,
       data,
+      allDeposits,
       play,
       onComplete,
       isMarking,
@@ -318,36 +369,99 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       <p className="text-xs text-text-muted">
         Right-click or hold a tile to mark it instead of digging
       </p>
+      {autoRevealKeys.length > 0 && (
+        <p
+          className="text-center text-xs font-mono font-bold text-[#F59E0B]"
+          role="status"
+          aria-live="polite"
+        >
+          ⚠️ Charges depleted · showing diamonds
+        </p>
+      )}
 
-      {/* Grid */}
+      {/* Seismic Matrix Grid with Outer Row & Column Counters */}
       <div
-        className="mx-auto w-fit max-w-full rounded-xl border border-border-subtle bg-surface-panel p-2 sm:p-3"
+        className={`mx-auto w-fit max-w-full rounded-xl border border-border-subtle bg-surface-panel p-2 sm:p-3${
+          autoRevealKeys.length > 0 ? ' pointer-events-none' : ''
+        }`}
         role="grid"
         aria-label="Crystal Mine grid"
         aria-rowcount={data.gridSize}
         aria-colcount={data.gridSize}
       >
+        {/* Column Header Counters */}
+        <div className="flex items-center mb-1">
+          <div className="w-5 shrink-0" aria-hidden="true" />
+          {colCounts.map((count, ci) => (
+            <div
+              key={ci}
+              style={{ width: cellSizePx }}
+              className="text-center font-mono text-[10px] font-black m-0.5"
+            >
+              <span
+                className={
+                  count > 0
+                    ? 'text-accent-depths font-bold'
+                    : 'text-text-muted/40'
+                }
+              >
+                {count}
+              </span>
+            </div>
+          ))}
+        </div>
+
         {data.grid.map((row, rowIdx) => (
           <div
             key={rowIdx}
-            className="flex"
+            className="flex items-center"
             role="row"
             aria-rowindex={rowIdx + 1}
           >
+            {/* Row Header Counter */}
+            <div className="w-5 shrink-0 text-right pr-1 font-mono text-[10px] font-black">
+              <span
+                className={
+                  rowCounts[rowIdx] > 0
+                    ? 'text-accent-depths font-bold'
+                    : 'text-text-muted/40'
+                }
+              >
+                {rowCounts[rowIdx] ?? 0}
+              </span>
+            </div>
+
             {row.map((cell) => {
-              const state = getCellState(cell, revealed, marked)
               const key = `${cell.row},${cell.col}`
+              const autoIndex = autoRevealKeys.indexOf(key)
+              const state =
+                autoIndex >= 0 && cell.isDeposit
+                  ? 'auto-revealed'
+                  : getCellState(cell, revealed, marked)
+              const isSonarActive = activeSonarKey === key
 
               let bg = 'bg-bg-base hover:bg-border-subtle border-border-subtle'
               let textContent: React.ReactNode = null
               let ariaLabel = `Row ${cell.row + 1}, column ${cell.col + 1}`
 
               if (state === 'clue') {
-                bg = 'bg-surface-panel border-border-subtle cursor-default'
+                bg = isSonarActive
+                  ? 'bg-accent-depths/20 border-accent-depths cursor-default'
+                  : 'bg-surface-panel border-border-subtle cursor-default'
                 textContent = (
-                  <span className="font-mono text-xs font-bold text-accent-depths">
-                    {String(cell.clueValue)}
-                  </span>
+                  <div className="relative flex items-center justify-center w-full h-full">
+                    {isSonarActive && (
+                      <span
+                        className="absolute inset-0 rounded-full border-2 border-accent-depths pointer-events-none"
+                        style={{
+                          animation: 'sonar-ping 0.85s ease-out forwards'
+                        }}
+                      />
+                    )}
+                    <span className="font-mono text-xs font-bold text-accent-depths drop-shadow-[0_0_6px_rgba(79,195,255,0.7)]">
+                      {String(cell.clueValue)}
+                    </span>
+                  </div>
                 )
                 ariaLabel += `, clue: ${cell.clueValue}`
               } else if (state === 'deposit-found') {
@@ -358,6 +472,18 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                   </span>
                 )
                 ariaLabel += ', deposit found'
+              } else if (state === 'auto-revealed') {
+                bg =
+                  'bg-bg-base border-dashed border-text-muted/60 cursor-default'
+                textContent = (
+                  <span
+                    className="text-base opacity-40 grayscale"
+                    aria-hidden="true"
+                  >
+                    {'\uD83D\uDD37'}
+                  </span>
+                )
+                ariaLabel += ', revealed by auto-scan, not counted'
               } else if (state === 'empty') {
                 bg =
                   'bg-border-subtle border-border-subtle cursor-default opacity-60'
@@ -410,11 +536,22 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                       clearTimeout(longPressTimerRef.current)
                   }}
                   disabled={!isInteractive}
-                  style={{ width: cellSizePx, height: cellSizePx }}
+                  style={{
+                    width: cellSizePx,
+                    height: cellSizePx,
+                    ...(autoIndex >= 0
+                      ? {
+                          animationDelay: `${autoIndex * AUTO_REVEAL_STAGGER_MS}ms`
+                        }
+                      : {})
+                  }}
                   className={[
                     'flex items-center justify-center rounded border transition-colors m-0.5',
                     'focus-visible:outline-2 focus-visible:outline-accent-depths',
                     bg,
+                    autoIndex >= 0
+                      ? 'animate-[scan-reveal_0.5s_ease-out_both]'
+                      : '',
                     isInteractive ? 'cursor-pointer' : 'cursor-default'
                   ].join(' ')}
                 >

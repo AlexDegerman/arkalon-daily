@@ -46,9 +46,12 @@ function generate(seed: string): PuzzleSeedData {
 
   // Pre-generate per-shot target positions and sinusoidal frequencies
   const shots: SniperShot[] = []
+  // Enforce a 30% minimum runway (180px) so reticle never crosses target before player can react
+  const minTargetX = STRIKE_TRACK_WIDTH * 0.3
+  const maxTargetX = STRIKE_TRACK_WIDTH - 50
+
   for (let i = 0; i < base.shotCount; i++) {
-    // Target center avoids outer 50px of each edge per spec
-    const targetCenterX = nextFloat(rng, 50, STRIKE_TRACK_WIDTH - 50)
+    const targetCenterX = nextFloat(rng, minTargetX, maxTargetX)
     const freqHz = nextFloat(rng, 0.3, 0.8)
     shots.push({ targetCenterX, targetWindowPx, freqHz })
   }

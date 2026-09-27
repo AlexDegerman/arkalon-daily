@@ -17,88 +17,32 @@ export interface SurgeBaseConfig {
 
 export const SURGE_BASE_CONFIGS: SurgeBaseConfig[] = [
   {
-    spawnPattern: 'single',
-    targetBehavior: 'stationary',
-    timingProfile: 'ramp',
-    spatialLayout: 'grid',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'alternating',
-    targetBehavior: 'moving',
-    timingProfile: 'ramp',
-    spatialLayout: 'lr_lanes',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'zigzag',
-    targetBehavior: 'stationary',
-    timingProfile: 'wave',
-    spatialLayout: 'random',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'circular',
+    spawnPattern: 'spiral',
     targetBehavior: 'fading',
-    timingProfile: 'endurance',
-    spatialLayout: 'circular_perimeter',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'scatter',
-    targetBehavior: 'brief',
-    timingProfile: 'sudden_spike',
-    spatialLayout: 'random',
-    hasDecoyTargets: true
-  },
-  {
-    spawnPattern: 'h_sweep',
-    targetBehavior: 'accelerating',
     timingProfile: 'ramp',
-    spatialLayout: 'grid',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'expanding',
-    targetBehavior: 'stationary',
-    timingProfile: 'pressure',
-    spatialLayout: 'center',
-    hasDecoyTargets: true
-  },
-  {
-    spawnPattern: 'paired',
-    targetBehavior: 'moving',
-    timingProfile: 'wave',
-    spatialLayout: 'symmetrical',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'corner_seq',
-    targetBehavior: 'direction_change',
-    timingProfile: 'mixed',
-    spatialLayout: 'corners',
+    spatialLayout: 'circular_perimeter',
     hasDecoyTargets: true
   },
   {
     spawnPattern: 'wave',
-    targetBehavior: 'shrinking',
+    targetBehavior: 'stationary',
     timingProfile: 'ramp',
     spatialLayout: 'random',
-    hasDecoyTargets: false
-  },
-  {
-    spawnPattern: 'spiral',
-    targetBehavior: 'fading',
-    timingProfile: 'endurance',
-    spatialLayout: 'circular_perimeter',
-    hasDecoyTargets: false
+    hasDecoyTargets: true
   },
   {
     spawnPattern: 'lane_switch',
-    targetBehavior: 'accelerating',
-    timingProfile: 'sudden_spike',
+    targetBehavior: 'stationary',
+    timingProfile: 'ramp',
     spatialLayout: 'tb_lanes',
-    hasDecoyTargets: false
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'corner_seq',
+    targetBehavior: 'stationary',
+    timingProfile: 'mixed',
+    spatialLayout: 'corners',
+    hasDecoyTargets: true
   },
   {
     spawnPattern: 'triple_burst',
@@ -108,17 +52,73 @@ export const SURGE_BASE_CONFIGS: SurgeBaseConfig[] = [
     hasDecoyTargets: true
   },
   {
-    spawnPattern: 'center_out',
-    targetBehavior: 'growing',
-    timingProfile: 'slow_short',
-    spatialLayout: 'center',
-    hasDecoyTargets: false
+    spawnPattern: 'paired',
+    targetBehavior: 'moving',
+    timingProfile: 'wave',
+    spatialLayout: 'symmetrical',
+    hasDecoyTargets: true
   },
   {
-    spawnPattern: 'outside_in',
-    targetBehavior: 'splitting',
-    timingProfile: 'fast_long',
-    spatialLayout: 'narrow_corridor',
+    spawnPattern: 'center_out',
+    targetBehavior: 'growing',
+    timingProfile: 'ramp',
+    spatialLayout: 'center',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'spiral',
+    targetBehavior: 'moving',
+    timingProfile: 'endurance',
+    spatialLayout: 'circular_perimeter',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'wave',
+    targetBehavior: 'shrinking',
+    timingProfile: 'wave',
+    spatialLayout: 'random',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'lane_switch',
+    targetBehavior: 'accelerating',
+    timingProfile: 'sudden_spike',
+    spatialLayout: 'tb_lanes',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'corner_seq',
+    targetBehavior: 'direction_change',
+    timingProfile: 'pressure',
+    spatialLayout: 'corners',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'triple_burst',
+    targetBehavior: 'fading',
+    timingProfile: 'ramp',
+    spatialLayout: 'grid',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'triple_burst',
+    targetBehavior: 'stationary',
+    timingProfile: 'sudden_spike',
+    spatialLayout: 'grid',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'paired',
+    targetBehavior: 'stationary',
+    timingProfile: 'ramp',
+    spatialLayout: 'symmetrical',
+    hasDecoyTargets: true
+  },
+  {
+    spawnPattern: 'center_out',
+    targetBehavior: 'brief',
+    timingProfile: 'pressure',
+    spatialLayout: 'center',
     hasDecoyTargets: true
   }
 ]

@@ -83,6 +83,12 @@ registerValidator('wild_prediction', (data) => {
     if (round.choices.length < 2) {
       return { valid: false, reason: 'Round has fewer than 2 choices' }
     }
+    const choiceKeys = new Set(
+      round.choices.map((c) => `${c.shape}-${c.color}-${c.size}`)
+    )
+    if (choiceKeys.size !== round.choices.length) {
+      return { valid: false, reason: 'Round contains duplicate choices' }
+    }
     // Correct answer must appear in choices
     const found = round.choices.some(
       (c) =>

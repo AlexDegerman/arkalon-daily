@@ -5,7 +5,9 @@ import { DEPTHS_BASE_CONFIGS } from '@/lib/puzzles/baseConfigs/depths'
 import {
   calcChargeLimit,
   calcClueTileCount,
-  DEPOSIT_PATTERNS
+  DEPOSIT_PATTERNS,
+  manhattan,
+  computeClueValue
 } from '@/lib/puzzles/compositionSystem'
 import {
   registerValidator,
@@ -32,79 +34,12 @@ export interface GridCell {
 export interface CrystalMineData {
   gridSize: number
   grid: GridCell[][]
+  rowCounts: number[]
+  colCounts: number[]
   depositCount: number
   chargeLimit: number
   clueType: ClueTypeId
   depositPattern: DepositPatternId
-}
-
-// Manhattan distance between two grid positions
-function manhattan(r1: number, c1: number, r2: number, c2: number): number {
-  return Math.abs(r1 - r2) + Math.abs(c1 - c2)
-}
-
-// Returns the clue value for a clue tile at (row, col) given deposit positions
-function computeClueValue(
-  row: number,
-  col: number,
-  deposits: { row: number; col: number }[],
-  clueType: ClueTypeId,
-  gridSize: number
-): string | number {
-  switch (clueType) {
-    case 'numeric': {
-      const minDist = Math.min(
-        ...deposits.map((d) => manhattan(row, col, d.row, d.col))
-      )
-      return minDist
-    }
-    case 'directional': {
-      // Sort deposits by Manhattan distance, then by row then col for tiebreaking
-      const sorted = [...deposits].sort((a, b) => {
-        const da = manhattan(row, col, a.row, a.col)
-        const db = manhattan(row, col, b.row, b.col)
-        if (da !== db) return da - db
-        if (a.col !== b.col) return a.col - b.col
-        return a.row - b.row
-      })
-      const nearest = sorted[0]
-      if (!nearest) return '?'
-      const dr = nearest.row - row
-      const dc = nearest.col - col
-      if (dr === 0 && dc === 0) return '\u25C6' // on deposit
-      const angle = Math.atan2(dr, dc) * (180 / Math.PI)
-      if (angle >= -22.5 && angle < 22.5) return '\u2192'
-      if (angle >= 22.5 && angle < 67.5) return '\u2198'
-      if (angle >= 67.5 && angle < 112.5) return '\u2193'
-      if (angle >= 112.5 && angle < 157.5) return '\u2199'
-      if (angle >= 157.5 || angle < -157.5) return '\u2190'
-      if (angle >= -157.5 && angle < -112.5) return '\u2196'
-      if (angle >= -112.5 && angle < -67.5) return '\u2191'
-      return '\u2197'
-    }
-    case 'hot_cold': {
-      const minDist = Math.min(
-        ...deposits.map((d) => manhattan(row, col, d.row, d.col))
-      )
-      if (minDist <= 1) return 'HOT'
-      if (minDist <= 3) return 'WARM'
-      return 'COLD'
-    }
-    case 'adjacency_count': {
-      let count = 0
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue
-          const nr = row + dr
-          const nc = col + dc
-          if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
-            if (deposits.some((d) => d.row === nr && d.col === nc)) count++
-          }
-        }
-      }
-      return count
-    }
-  }
 }
 
 // Places deposits according to the deposit pattern template
@@ -223,7 +158,6 @@ function generate(seed: string): PuzzleSeedData {
     depositCount,
     clueType,
     depositPattern,
-    startTileRevealed
   } = base
 
   const chargeLimit = calcChargeLimit(gridSize, depositCount, clueType)
@@ -284,22 +218,20 @@ function generate(seed: string): PuzzleSeedData {
     cell.isRevealed = true
   }
 
-  // startTileRevealed: reveal the deposit nearest to the grid center
-  if (startTileRevealed && deposits.length > 0) {
-    const mid = (gridSize - 1) / 2
-    const nearest = [...deposits].sort(
-      (a, b) =>
-        manhattan(a.row, a.col, mid, mid) - manhattan(b.row, b.col, mid, mid)
-    )[0]
-    if (nearest) {
-      const cell = grid[nearest.row]?.[nearest.col]
-      if (cell) cell.isRevealed = true
-    }
-  }
+  const rowCounts = Array.from(
+    { length: gridSize },
+    (_, r) => deposits.filter((d) => d.row === r).length
+  )
+  const colCounts = Array.from(
+    { length: gridSize },
+    (_, c) => deposits.filter((d) => d.col === c).length
+  )
 
   const familyData: CrystalMineData = {
     gridSize,
     grid,
+    rowCounts,
+    colCounts,
     depositCount,
     chargeLimit,
     clueType,

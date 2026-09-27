@@ -70,7 +70,27 @@ function buildChoices(
   distractors: SequenceElement[],
   choiceCount: number
 ): SequenceElement[] {
-  const pool = distractors.slice(0, choiceCount - 1)
+  const seen = new Set([`${correct.shape}-${correct.color}-${correct.size}`])
+  const pool: SequenceElement[] = []
+  for (const d of distractors) {
+    if (pool.length >= choiceCount - 1) break
+    const key = `${d.shape}-${d.color}-${d.size}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    pool.push(d)
+  }
+  // Top up deterministically from the full element space when distractors collided
+  for (const s of SHAPES) {
+    for (const c of COLORS) {
+      for (const sz of SIZES) {
+        if (pool.length >= choiceCount - 1) break
+        const key = `${s}-${c}-${sz}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        pool.push({ shape: s, color: c, size: sz })
+      }
+    }
+  }
   const all = [...pool, correct]
   return shuffle(rng, all)
 }
@@ -133,41 +153,6 @@ function genAlternating(
   }
 }
 
-function genRotationMirror(
-  rng: () => number,
-  stepsShown: number,
-  choiceCount: number
-): CipherRound {
-  // Rotation angles: 0, 90, 180, 270 degrees represented as step index * 90
-  const rotationStep = pickOne(rng, [45, 90, 120, 180])
-  const shape = pickOne(rng, SHAPES)
-  const color = pickOne(rng, COLORS)
-  const size = pickOne(rng, SIZES)
-
-  // We encode rotation as a custom field in shape name for display purposes
-  // The component renders these with CSS transform
-  const shown: SequenceElement[] = []
-  for (let i = 0; i < stepsShown; i++) {
-    shown.push({ shape, color, size })
-  }
-  const correctRotation = (stepsShown * rotationStep) % 360
-  const correct: SequenceElement = { shape, color, size }
-
-  // Distractors are the same shape at wrong rotation steps
-  const distractors: SequenceElement[] = [
-    makeDistractor(rng, correct),
-    makeDistractor(rng, correct),
-    makeDistractor(rng, correct)
-  ]
-
-  return {
-    generator: 'rotation_mirror',
-    shownElements: shown,
-    correctAnswer: correct,
-    choices: buildChoices(rng, correct, distractors, choiceCount)
-  }
-}
-
 function genDualVariable(
   rng: () => number,
   stepsShown: number,
@@ -208,9 +193,11 @@ function genTriVariable(
   stepsShown: number,
   choiceCount: number
 ): CipherRound {
-  const shapePeriod = 3
-  const colorPeriod = 2
-  const sizePeriod = 2
+  // Variable periods force the player to deduce the cycle length itself,
+  // not just the pattern. Max periods bounded by available attribute counts
+  const shapePeriod = 3 + nextInt(rng, 3) // 3, 4, or 5
+  const colorPeriod = 2 + nextInt(rng, 2) // 2 or 3
+  const sizePeriod = 2 + nextInt(rng, 2) // 2 or 3
   const shapes = shuffle(rng, [...SHAPES]).slice(0, shapePeriod)
   const colors = shuffle(rng, [...COLORS]).slice(0, colorPeriod)
   const sizes = shuffle(rng, [...SIZES]).slice(0, sizePeriod)
@@ -240,116 +227,94 @@ function genTriVariable(
 }
 
 function genRuleDiscovery(rng: () => number, choiceCount: number): CipherRound {
-  // Hidden rule: shapes with >= 4 sides are "yes"
-  const yesShapes: ElementShape[] = ['square', 'diamond', 'hexagon', 'star']
-  const noShapes: ElementShape[] = ['circle', 'triangle']
+  type RuleType =
+    | 'specific_color'
+    | 'specific_shape'
+    | 'specific_size'
+    | 'color_family'
+  const ruleTypes: RuleType[] = [
+    'specific_color',
+    'specific_shape',
+    'specific_size',
+    'color_family'
+  ]
+  const rule = pickOne(rng, ruleTypes)
 
-  const color = pickOne(rng, COLORS)
-  const size = pickOne(rng, SIZES)
+  let predicate: (el: SequenceElement) => boolean
 
-  const yesPool = shuffle(rng, yesShapes)
-  const noPool = shuffle(rng, noShapes)
+  const targetColor = pickOne(rng, COLORS)
+  const targetShape = pickOne(rng, SHAPES)
+  const targetSize = pickOne(rng, SIZES)
+  const warmColors: ElementColor[] = ['red', 'orange', 'yellow']
+  const coolColors: ElementColor[] = ['blue', 'green', 'purple']
+  const targetFamily = pickOne(rng, ['warm', 'cool'] as const)
 
-  const yesExamples = yesPool
-    .slice(0, 3)
-    .map((s) => ({ shape: s, color, size }))
-  const noExamples = noPool.slice(0, 2).map((s) => ({ shape: s, color, size }))
+  switch (rule) {
+    case 'specific_color':
+      predicate = (el) => el.color === targetColor
+      break
+    case 'specific_shape':
+      predicate = (el) => el.shape === targetShape
+      break
+    case 'specific_size':
+      predicate = (el) => el.size === targetSize
+      break
+    case 'color_family':
+      predicate = (el) =>
+        targetFamily === 'warm'
+          ? warmColors.includes(el.color)
+          : coolColors.includes(el.color)
+      break
+  }
 
-  // Correct answer: a yes-shape not yet shown
-  const shownYesShapes = new Set(yesExamples.map((e) => e.shape))
-  const unusedYes = yesShapes.filter((s) => !shownYesShapes.has(s))
-  const correctShape =
-    unusedYes.length > 0
-      ? unusedYes[nextInt(rng, unusedYes.length)]
-      : yesPool[0]
-  const correct: SequenceElement = { shape: correctShape, color, size }
+  // Generate a broad universe of all possible distinct elements
+  const allPossible: SequenceElement[] = []
+  for (const s of SHAPES) {
+    for (const c of COLORS) {
+      for (const sz of SIZES) {
+        allPossible.push({ shape: s, color: c, size: sz })
+      }
+    }
+  }
 
-  // Distractors: no-shapes
-  const distractors = noShapes.map(
-    (s) => ({ shape: s, color, size }) as SequenceElement
+  const shuffledAll = shuffle(rng, allPossible)
+  const validPool = shuffledAll.filter(predicate)
+  const invalidPool = shuffledAll.filter((el) => !predicate(el))
+
+  // Pick 3 diverse positive examples and 2 negative examples
+  const yesExamples = validPool.slice(0, 3)
+  const noExamples = invalidPool.slice(0, 2)
+
+  // Correct answer: a valid element that was NOT already shown in YES
+  const usedKeys = new Set(
+    [...yesExamples, ...noExamples].map(
+      (e) => `${e.shape}-${e.color}-${e.size}`
+    )
   )
+  const availableCorrect = validPool.filter(
+    (e) => !usedKeys.has(`${e.shape}-${e.color}-${e.size}`)
+  )
+  const correct = availableCorrect[0] ?? validPool[0]
+
+  // Distractors: INVALID elements that were NOT shown in the NO box
+  const availableDistractors = invalidPool.filter(
+    (e) => !usedKeys.has(`${e.shape}-${e.color}-${e.size}`)
+  )
+  const chosenDistractors: SequenceElement[] = []
+
+  // Ensure distractors have diverse shapes and colors so player can't just match NO items
+  for (const d of availableDistractors) {
+    if (chosenDistractors.length >= choiceCount - 1) break
+    chosenDistractors.push(d)
+  }
 
   return {
     generator: 'rule_discovery',
     shownElements: [],
     correctAnswer: correct,
-    choices: buildChoices(rng, correct, distractors, choiceCount),
+    choices: buildChoices(rng, correct, chosenDistractors, choiceCount),
     yesExamples,
     noExamples
-  }
-}
-
-function genGridTransform(
-  rng: () => number,
-  stepsShown: number,
-  choiceCount: number
-): CipherRound {
-  // We represent a 3x3 grid as a 9-bit integer (bit i = cell i filled)
-  const transforms = [
-    'rotate_cw',
-    'reflect_h',
-    'reflect_v',
-    'shift_right'
-  ] as const
-  type Transform = (typeof transforms)[number]
-  const transform = pickOne(rng, [...transforms]) as Transform
-
-  function applyTransform(grid: number, t: Transform): number {
-    const cells: boolean[] = Array.from({ length: 9 }, (_, i) =>
-      Boolean((grid >> i) & 1)
-    )
-    const g = (r: number, c: number) => cells[r * 3 + c]
-    const result = new Array<boolean>(9).fill(false)
-
-    if (t === 'rotate_cw') {
-      for (let r = 0; r < 3; r++)
-        for (let c = 0; c < 3; c++) result[c * 3 + (2 - r)] = g(r, c)
-    } else if (t === 'reflect_h') {
-      for (let r = 0; r < 3; r++)
-        for (let c = 0; c < 3; c++) result[r * 3 + (2 - c)] = g(r, c)
-    } else if (t === 'reflect_v') {
-      for (let r = 0; r < 3; r++)
-        for (let c = 0; c < 3; c++) result[(2 - r) * 3 + c] = g(r, c)
-    } else {
-      for (let r = 0; r < 3; r++)
-        for (let c = 0; c < 3; c++) result[r * 3 + ((c + 1) % 3)] = g(r, c)
-    }
-
-    return result.reduce((acc, v, i) => acc | (v ? 1 << i : 0), 0)
-  }
-
-  // Generate initial grid with 3-5 filled cells
-  const fillCount = nextInt(rng, 3) + 3
-  const positions = shuffle(
-    rng,
-    Array.from({ length: 9 }, (_, i) => i)
-  ).slice(0, fillCount)
-  let grid = positions.reduce((acc, p) => acc | (1 << p), 0)
-
-  const shown: SequenceElement[] = []
-  for (let i = 0; i < stepsShown; i++) {
-    // Encode grid state as shape (bitmask encoded in shape name for display)
-    shown.push({ shape: 'square', color: 'blue', size: 'medium' })
-    grid = applyTransform(grid, transform)
-  }
-  const correctGrid = grid
-  const correct: SequenceElement = {
-    shape: 'square',
-    color: 'blue',
-    size: 'medium'
-  }
-
-  // Store grid data in a way the component can render
-  // We use color to encode the grid state index
-  const distractors = Array.from({ length: 4 }, () =>
-    makeDistractor(rng, correct)
-  )
-
-  return {
-    generator: 'grid_transform',
-    shownElements: shown,
-    correctAnswer: correct,
-    choices: buildChoices(rng, correct, distractors, choiceCount)
   }
 }
 
@@ -357,44 +322,198 @@ function genConstrainedChoice(
   rng: () => number,
   choiceCount: number
 ): CipherRound {
-  // Generate 2-3 constraints and find one element satisfying all
-  const reqColor = pickOne(rng, COLORS)
-  const forbidShape = pickOne(rng, SHAPES)
-  const reqSize = pickOne(rng, SIZES)
-
-  const correctShape = SHAPES.filter((s) => s !== forbidShape)[
-    nextInt(rng, SHAPES.length - 1)
-  ]
   const correct: SequenceElement = {
-    shape: correctShape,
-    color: reqColor,
-    size: reqSize
+    shape: pickOne(rng, SHAPES),
+    color: pickOne(rng, COLORS),
+    size: pickOne(rng, SIZES)
   }
-
-  const constraints = [
-    `Must be ${reqColor}`,
-    `Cannot be ${forbidShape}`,
-    `Must be ${reqSize}`
+  interface Constraint {
+    label: string
+    hard: boolean
+    holds: (el: SequenceElement) => boolean
+  }
+  const warm: ElementColor[] = ['red', 'orange', 'yellow']
+  const isWarm = (el: SequenceElement) => warm.includes(el.color)
+  const traitsShared = (a: SequenceElement, b: SequenceElement) =>
+    (a.shape === b.shape ? 1 : 0) +
+    (a.color === b.color ? 1 : 0) +
+    (a.size === b.size ? 1 : 0)
+  const describe = (el: SequenceElement) => `${el.color} ${el.size} ${el.shape}`
+  const basic: Constraint[] = [
+    {
+      label: `Must be ${correct.color}`,
+      hard: false,
+      holds: (el) => el.color === correct.color
+    },
+    {
+      label: `Must be ${correct.shape}`,
+      hard: false,
+      holds: (el) => el.shape === correct.shape
+    },
+    {
+      label: `Must be ${correct.size}`,
+      hard: false,
+      holds: (el) => el.size === correct.size
+    }
   ]
-
-  // Distractors each violate exactly one constraint
-  const d1: SequenceElement = {
-    ...correct,
-    color: COLORS.filter((c) => c !== reqColor)[nextInt(rng, COLORS.length - 1)]
+  const hard: Constraint[] = []
+  for (const c of COLORS) {
+    if (c !== correct.color)
+      hard.push({
+        label: `Cannot be ${c}`,
+        hard: true,
+        holds: (el) => el.color !== c
+      })
   }
-  const d2: SequenceElement = { ...correct, shape: forbidShape }
-  const d3: SequenceElement = {
-    ...correct,
-    size: SIZES.filter((s) => s !== reqSize)[nextInt(rng, SIZES.length - 1)]
+  for (const s of SHAPES) {
+    if (s !== correct.shape)
+      hard.push({
+        label: `Cannot be ${s}`,
+        hard: true,
+        holds: (el) => el.shape !== s
+      })
   }
-  const d4: SequenceElement = makeDistractor(rng, correct)
-
+  for (const sz of SIZES) {
+    if (sz !== correct.size)
+      hard.push({
+        label: `Cannot be ${sz}`,
+        hard: true,
+        holds: (el) => el.size !== sz
+      })
+  }
+  hard.push(
+    isWarm(correct)
+      ? {
+          label: 'Must be warm-toned (red, orange, yellow)',
+          hard: true,
+          holds: isWarm
+        }
+      : {
+          label: 'Must be cool-toned (blue, green, purple)',
+          hard: true,
+          holds: (el) => !isWarm(el)
+        }
+  )
+  const xorShape = pickOne(
+    rng,
+    SHAPES.filter((s) => s !== correct.shape)
+  )
+  hard.push({
+    label: `Must be ${correct.color} or ${xorShape}, but not both`,
+    hard: true,
+    holds: (el) => (el.color === correct.color) !== (el.shape === xorShape)
+  })
+  const sharedAxis = nextInt(rng, 3)
+  const refOne: SequenceElement = {
+    shape:
+      sharedAxis === 0
+        ? correct.shape
+        : pickOne(
+            rng,
+            SHAPES.filter((s) => s !== correct.shape)
+          ),
+    color:
+      sharedAxis === 1
+        ? correct.color
+        : pickOne(
+            rng,
+            COLORS.filter((c) => c !== correct.color)
+          ),
+    size:
+      sharedAxis === 2
+        ? correct.size
+        : pickOne(
+            rng,
+            SIZES.filter((s) => s !== correct.size)
+          )
+  }
+  hard.push({
+    label: `Shares exactly one trait with the ${describe(refOne)}`,
+    hard: true,
+    holds: (el) => traitsShared(el, refOne) === 1
+  })
+  const refNone: SequenceElement = {
+    shape: pickOne(
+      rng,
+      SHAPES.filter((s) => s !== correct.shape)
+    ),
+    color: pickOne(
+      rng,
+      COLORS.filter((c) => c !== correct.color)
+    ),
+    size: pickOne(
+      rng,
+      SIZES.filter((s) => s !== correct.size)
+    )
+  }
+  hard.push({
+    label: `Shares no traits with the ${describe(refNone)}`,
+    hard: true,
+    holds: (el) => traitsShared(el, refNone) === 0
+  })
+  const impColor = pickOne(
+    rng,
+    COLORS.filter((c) => c !== correct.color)
+  )
+  const impSize = pickOne(rng, SIZES)
+  hard.push({
+    label: `If it is ${impColor}, it must be ${impSize}`,
+    hard: true,
+    holds: (el) => el.color !== impColor || el.size === impSize
+  })
+  // 3-4 constraints weighted toward hard types so elimination demands
+  // real deduction instead of three templated attribute checks
+  const count = 3 + nextInt(rng, 2)
+  const constraints = [
+    ...shuffle(rng, hard).slice(0, count - 1),
+    ...shuffle(rng, basic).slice(0, 1)
+  ]
+  // Distractors violate exactly one constraint each (near-misses);
+  // scan the 108-element space deterministically for each slot
+  const all: SequenceElement[] = []
+  for (const s of SHAPES)
+    for (const c of COLORS)
+      for (const sz of SIZES) all.push({ shape: s, color: c, size: sz })
+  const keyOf = (el: SequenceElement) => `${el.shape}-${el.color}-${el.size}`
+  const seen = new Set([keyOf(correct)])
+  const distractors: SequenceElement[] = []
+  const start = nextInt(rng, all.length)
+  for (let slot = 0; slot < choiceCount - 1; slot++) {
+    const target = constraints[slot % constraints.length]
+    for (let step = 0; step < all.length; step++) {
+      const el = all[(start + step) % all.length]
+      const k = keyOf(el)
+      if (seen.has(k)) continue
+      if (
+        !target.holds(el) &&
+        constraints.every((cn) => cn === target || cn.holds(el))
+      ) {
+        seen.add(k)
+        distractors.push(el)
+        break
+      }
+    }
+  }
+  // Safety top-up: any unseen element violating at least one constraint
+  for (
+    let step = 0;
+    distractors.length < choiceCount - 1 && step < all.length;
+    step++
+  ) {
+    const el = all[(start + step) % all.length]
+    const k = keyOf(el)
+    if (seen.has(k)) continue
+    if (constraints.some((cn) => !cn.holds(el))) {
+      seen.add(k)
+      distractors.push(el)
+    }
+  }
   return {
     generator: 'constrained_choice',
     shownElements: [],
     correctAnswer: correct,
-    choices: buildChoices(rng, correct, [d1, d2, d3, d4], choiceCount),
-    constraints
+    choices: buildChoices(rng, correct, distractors, choiceCount),
+    constraints: constraints.map((c) => c.label)
   }
 }
 

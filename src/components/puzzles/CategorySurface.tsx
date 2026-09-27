@@ -86,6 +86,8 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [playerName, setPlayerName] = useState<string>('Player')
 
   const playerIdRef = useRef<string | null>(null)
+  const dailySeedRef = useRef<PuzzleSeedData | null>(null)
+  const submittingRef = useRef(false)
 
   // Retrieve playerId from localStorage
   function getPlayerId(): string | null {
@@ -156,6 +158,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       setStreakDays(res.streakDays ?? 0)
       setPuzzleInfo(res.puzzleInfo!)
       setSeedData(res.seedData!)
+      dailySeedRef.current = res.seedData!
 
       const needsTrial = !res.trialsCompleted?.includes(category)
       if (needsTrial) {
@@ -179,25 +182,25 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     })
   }, [category, router, arkalonTTSEnabled, arkalonVolume])
 
-    useEffect(() => {
-      const setContext = useMusicStore.getState().setContext
-      if (
-        phase === 'playing' ||
-        phase === 'trial-explainer' ||
-        phase === 'result' ||
-        phase === 'submitting'
-      ) {
-        setContext(category)
-      } else if (phase === 'loading') {
-        setContext('menu')
-      }
-    }, [phase, category])
-    // Abandoning a puzzle mid-play must not leave puzzle music running
-    useEffect(() => {
-      return () => {
-        useMusicStore.getState().setContext('menu')
-      }
-    }, [])
+  useEffect(() => {
+    const setContext = useMusicStore.getState().setContext
+    if (
+      phase === 'playing' ||
+      phase === 'trial-explainer' ||
+      phase === 'result' ||
+      phase === 'submitting'
+    ) {
+      setContext(category)
+    } else if (phase === 'loading') {
+      setContext('menu')
+    }
+  }, [phase, category])
+  // Abandoning a puzzle mid-play must not leave puzzle music running
+  useEffect(() => {
+    return () => {
+      useMusicStore.getState().setContext('menu')
+    }
+  }, [])
 
   const handleTrialBegin = useCallback(() => {
     setIsTrial(true)
@@ -209,17 +212,21 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
 
   const handleTrialSkip = useCallback(() => {
     setIsTrial(false)
+    if (dailySeedRef.current) {
+      setSeedData(dailySeedRef.current)
+    }
     setPhase('playing')
   }, [])
 
-  /// Shared submission handler used by all category completions
+  // Shared submission handler used by all category completions
   const handleSubmit = useCallback(
     async (
       metrics: Parameters<typeof submitResult>[0]['familyMetrics'],
       displayMetrics: Record<string, unknown>,
       previewScore?: number
     ) => {
-      if (!puzzleInfo || !playerIdRef.current) return
+      if (!puzzleInfo || !playerIdRef.current || submittingRef.current) return
+      submittingRef.current = true
       if (isTrial) {
         const pid = playerIdRef.current
         await completeTrial(pid, category)

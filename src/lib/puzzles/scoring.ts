@@ -1,7 +1,7 @@
 import 'server-only'
 
-// All scoring formulas are server-side only.
-// Scores are recomputed from raw family_specific_metrics; no client score is trusted.
+// All scoring formulas are server-side only
+// Scores are recomputed from raw family_specific_metrics; no client score is trusted
 
 // ---- Recall (Arkalon Vision) ----
 
@@ -15,13 +15,15 @@ function recallSpeedMultiplier(
   elapsedMs: number,
   sequenceLength: number
 ): number {
-  const idealMs = sequenceLength * 800
-  const maxMs = sequenceLength * 3000
-  return Math.max(0.5, 1.0 - ((elapsedMs - idealMs) / (maxMs - idealMs)) * 0.5)
+  const idealMs = sequenceLength * 1400
+  const maxMs = sequenceLength * 3200
+  return Math.max(
+    0.85,
+    1.0 - ((elapsedMs - idealMs) / (maxMs - idealMs)) * 0.15
+  )
 }
 
 const RECALL_ROUND_WEIGHTS = [35, 30, 35] as const
-
 export function scoreRecall(rounds: RecallRoundMetrics[]): number {
   let total = 0
   for (let i = 0; i < rounds.length && i < 3; i++) {
@@ -44,10 +46,11 @@ export interface SurgeNodeMetrics {
 
 function surgeReactionGrade(reactionMs: number): number {
   if (reactionMs === 0) return 0.0 // miss
-  if (reactionMs < 150) return 1.0
-  if (reactionMs < 250) return 0.85
-  if (reactionMs < 400) return 0.65
-  if (reactionMs < 600) return 0.4
+  if (reactionMs < 300) return 1.0
+  if (reactionMs < 450) return 0.85
+  if (reactionMs < 650) return 0.7
+  if (reactionMs < 900) return 0.45
+  if (reactionMs < 1400) return 0.25
   return 0.0
 }
 

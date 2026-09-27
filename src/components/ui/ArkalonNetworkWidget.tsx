@@ -51,11 +51,12 @@ export interface NetworkAlert {
 
 // Set type to 'new' (green) or 'updated' (golden/amber). Set to null when there are no active alerts.
 // Bump 'id' whenever a game launches or receives a major update to show the badge to all players.
-export const LATEST_NETWORK_ALERT: NetworkAlert = {
+export const LATEST_NETWORK_ALERT = {
   id: 'arkalon-daily-v1',
-  type: 'updated'
+  type: 'new' as 'new' | 'updated' | null
 }
 const SEEN_ALERT_STORAGE_KEY = 'arkalon_network_seen_alert'
+const DISCOVERY_STORAGE_KEY = 'arkalon_network_widget_discovered'
 
 const NETWORK_LINKS = [
   {
@@ -84,16 +85,22 @@ export function ArkalonNetworkWidget({
   storageKey = 'arkalon_network_widget_collapsed',
   theme = 'dark'
 }: ArkalonNetworkWidgetProps) {
-  // Non-collapsed by default as requested
-  const [collapsed, setCollapsed] = useState(false)
+  // Collapsed by default to keep mobile and desktop screens unobstructed
+  const [collapsed, setCollapsed] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [activeAlert, setActiveAlert] = useState<'new' | 'updated' | null>(null)
+  const [isFirstTimeDiscovery, setIsFirstTimeDiscovery] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     try {
       const saved = localStorage.getItem(storageKey)
-      if (saved === 'true') setCollapsed(true)
+      if (saved === 'false') setCollapsed(false)
+
+      const discovered = localStorage.getItem(DISCOVERY_STORAGE_KEY) === '1'
+      if (!discovered) {
+        setIsFirstTimeDiscovery(true)
+      }
 
       if (LATEST_NETWORK_ALERT.type) {
         const seenAlert = localStorage.getItem(SEEN_ALERT_STORAGE_KEY)
@@ -109,6 +116,11 @@ export function ArkalonNetworkWidget({
       const next = !prev
       try {
         localStorage.setItem(storageKey, String(next))
+        // Clearing discovery flag immediately when the player opens the widget
+        if (prev) {
+          localStorage.setItem(DISCOVERY_STORAGE_KEY, '1')
+          setIsFirstTimeDiscovery(false)
+        }
       } catch {}
       return next
     })
@@ -125,8 +137,9 @@ export function ArkalonNetworkWidget({
 
   const isUpdated = activeAlert === 'updated'
   const pipColor = isUpdated ? 'bg-[#F59E0B]' : 'bg-accent-recall'
+  const showNotificationPip = Boolean(activeAlert) || isFirstTimeDiscovery
 
-  // Collapsed State: Logo Only (Floating in corner with alert pip)
+  // Collapsed State: Logo Only (Floating in corner with discovery or alert pip)
   if (collapsed) {
     return (
       <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40">
@@ -138,7 +151,7 @@ export function ArkalonNetworkWidget({
           className="relative flex items-center justify-center w-10 h-10 rounded-full border border-border-subtle bg-surface-panel/95 text-text-muted hover:text-text-primary hover:border-accent-recall transition-all shadow-2xl active:scale-95 cursor-pointer backdrop-blur-md"
         >
           <ArkalonEmblem size={20} theme={theme} />
-          {activeAlert && (
+          {showNotificationPip && (
             <span
               className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full ${pipColor} border-2 border-[#0c111a] animate-pulse`}
             />

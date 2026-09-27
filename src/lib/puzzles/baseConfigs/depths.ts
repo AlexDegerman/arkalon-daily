@@ -8,113 +8,97 @@ export interface DepthsBaseConfig {
   depositCount: number
   clueType: ClueTypeId
   depositPattern: DepositPatternId
-  startTileRevealed: boolean
 }
 
 export const DEPTHS_BASE_CONFIGS: DepthsBaseConfig[] = [
   {
     gridSize: 5,
-    depositCount: 3,
+    depositCount: 5,
     clueType: 'numeric',
-    depositPattern: 'scattered',
-    startTileRevealed: true
-  },
-  {
-    gridSize: 5,
-    depositCount: 3,
-    clueType: 'directional',
-    depositPattern: 'scattered',
-    startTileRevealed: true
-  },
-  {
-    gridSize: 5,
-    depositCount: 3,
-    clueType: 'numeric',
-    depositPattern: 'clustered',
-    startTileRevealed: false
-  },
-  {
-    gridSize: 5,
-    depositCount: 4,
-    clueType: 'numeric',
-    depositPattern: 'edges_only',
-    startTileRevealed: true
-  },
-  {
-    gridSize: 5,
-    depositCount: 4,
-    clueType: 'adjacency_count',
-    depositPattern: 'diagonal_line',
-    startTileRevealed: true
+    depositPattern: 'scattered'
   },
   {
     gridSize: 6,
-    depositCount: 3,
+    depositCount: 5,
+    clueType: 'numeric',
+    depositPattern: 'scattered'
+  },
+  {
+    gridSize: 7,
+    depositCount: 6,
+    clueType: 'directional',
+    depositPattern: 'scattered'
+  },
+  {
+    gridSize: 6,
+    depositCount: 5,
+    clueType: 'numeric',
+    depositPattern: 'center_mass'
+  },
+  {
+    gridSize: 6,
+    depositCount: 5,
+    clueType: 'adjacency_count',
+    depositPattern: 'diagonal_line'
+  },
+  {
+    gridSize: 6,
+    depositCount: 4,
     clueType: 'hot_cold',
-    depositPattern: 'scattered',
-    startTileRevealed: true
+    depositPattern: 'scattered'
   },
   {
     gridSize: 6,
     depositCount: 4,
     clueType: 'numeric',
-    depositPattern: 'l_shape',
-    startTileRevealed: false
+    depositPattern: 'l_shape'
   },
   {
-    gridSize: 6,
-    depositCount: 4,
+    gridSize: 7,
+    depositCount: 6,
     clueType: 'directional',
-    depositPattern: 'split',
-    startTileRevealed: true
+    depositPattern: 'diagonal_line'
   },
   {
     gridSize: 6,
     depositCount: 5,
     clueType: 'numeric',
-    depositPattern: 'center_mass',
-    startTileRevealed: false
+    depositPattern: 'center_mass'
   },
   {
     gridSize: 6,
     depositCount: 5,
     clueType: 'adjacency_count',
-    depositPattern: 'corners',
-    startTileRevealed: true
+    depositPattern: 'corners'
   },
   {
     gridSize: 7,
     depositCount: 4,
     clueType: 'hot_cold',
-    depositPattern: 'scattered',
-    startTileRevealed: true
+    depositPattern: 'scattered'
   },
   {
     gridSize: 7,
     depositCount: 5,
     clueType: 'numeric',
-    depositPattern: 'split',
-    startTileRevealed: false
+    depositPattern: 'split'
   },
   {
     gridSize: 7,
-    depositCount: 5,
+    depositCount: 6,
     clueType: 'directional',
-    depositPattern: 'l_shape',
-    startTileRevealed: true
+    depositPattern: 'scattered'
   },
   {
     gridSize: 7,
     depositCount: 6,
     clueType: 'numeric',
-    depositPattern: 'edges_only',
-    startTileRevealed: false
+    depositPattern: 'edges_only'
   },
   {
     gridSize: 7,
     depositCount: 6,
     clueType: 'adjacency_count',
-    depositPattern: 'scattered',
-    startTileRevealed: false
+    depositPattern: 'scattered'
   }
 ]

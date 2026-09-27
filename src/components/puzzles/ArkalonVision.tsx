@@ -13,7 +13,9 @@ import { StartCountdownOverlay } from '@/components/layout/StartCountdownOverlay
 
 type RoundPhase = 'countdown' | 'display' | 'input' | 'feedback'
 
-const ROUND_INPUT_TIME_LIMIT_SEC = 16
+function getRoundTimeLimitSec(sequenceLength: number): number {
+  return Math.max(12, 6 + sequenceLength * 2)
+}
 
 interface RoundState {
   roundIndex: number
@@ -94,15 +96,19 @@ export function ArkalonVision({
     }
   })
 
-  const [timeLeft, setTimeLeft] = useState<number>(ROUND_INPUT_TIME_LIMIT_SEC)
+  const currentRound: ArkalonVisionRound | undefined =
+    data.rounds[roundState.roundIndex]
+  const currentSeqLength = currentRound?.sequence.length ?? 5
+  const roundTimeLimitSec = getRoundTimeLimitSec(currentSeqLength)
+
+  const [timeLeft, setTimeLeft] = useState<number>(() => roundTimeLimitSec)
 
   const sessionStartMs = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
   const roundResults = useRef<ArkalonVisionResult['rounds']>(
     savedSession?.roundResults ?? []
   )
-
-  const currentRound: ArkalonVisionRound | undefined =
-    data.rounds[roundState.roundIndex]
+  const roundStateRef = useRef<RoundState>(roundState)
+  roundStateRef.current = roundState
 
   // Persist turn-based state to localStorage on each meaningful change
   useEffect(() => {
@@ -133,14 +139,10 @@ export function ArkalonVision({
     isTrial
   ])
 
-  useEffect(() => {
-    if (roundState.phase === 'display' && currentRound) {
-      play('sequence-tick')
-    }
-  }, [roundState.phase, currentRound, play])
-
   const handleDisplayComplete = useCallback(() => {
-    setTimeLeft(ROUND_INPUT_TIME_LIMIT_SEC)
+    const nextSeqLen = currentRound?.sequence.length ?? 5
+    const limit = getRoundTimeLimitSec(nextSeqLen)
+    setTimeLeft(limit)
     setRoundState((prev) => ({
       ...prev,
       phase: 'input',
@@ -148,7 +150,7 @@ export function ArkalonVision({
       startMs: Date.now(),
       isTimedOut: false
     }))
-  }, [])
+  }, [currentRound])
 
   // Audio urgency on 3s, 2s, 1s remaining during input phase
   useEffect(() => {
@@ -159,23 +161,18 @@ export function ArkalonVision({
 
   // Handle timeout expiration with partial credit logging
   const handleTimeout = useCallback(() => {
-    if (!currentRound || roundState.phase !== 'input') return
-
+    const state = roundStateRef.current
+    if (!currentRound || state.phase !== 'input') return
     play('incorrect')
-
     const sequence = data.reverseEntry
       ? [...currentRound.sequence].reverse()
       : currentRound.sequence
-
-    const unenteredCount = Math.max(
-      0,
-      sequence.length - roundState.entered.length
-    )
-    const correctGlyphs = roundState.entered.filter(
+    const unenteredCount = Math.max(0, sequence.length - state.entered.length)
+    const correctGlyphs = state.entered.filter(
       (g, i) => g === sequence[i]
     ).length
-    const errors = roundState.errors + unenteredCount
-    const elapsedMs = ROUND_INPUT_TIME_LIMIT_SEC * 1000
+    const errors = state.errors + unenteredCount
+    const elapsedMs = getRoundTimeLimitSec(sequence.length) * 1000
 
     roundResults.current.push({
       correctGlyphs,
@@ -194,12 +191,11 @@ export function ArkalonVision({
     }))
 
     setTimeout(() => {
-      const nextRoundIndex = roundState.roundIndex + 1
+      const nextRoundIndex = state.roundIndex + 1
       if (nextRoundIndex < data.rounds.length) {
-        setTimeLeft(ROUND_INPUT_TIME_LIMIT_SEC)
         setRoundState({
           roundIndex: nextRoundIndex,
-          phase: 'display',
+          phase: 'countdown',
           entered: [],
           errors: 0,
           startMs: 0,
@@ -217,20 +213,16 @@ export function ArkalonVision({
         })
       }
     }, 1000)
-  }, [
-    currentRound,
-    roundState,
-    data.reverseEntry,
-    data.rounds.length,
-    play,
-    onComplete
-  ])
+  }, [currentRound, data.reverseEntry, data.rounds.length, play, onComplete])
 
-  // 16-second countdown timer active during input phase
+  // Continuous countdown timer: runs independently of button presses
   useEffect(() => {
     if (roundState.phase !== 'input') return
 
-    let initialTime = ROUND_INPUT_TIME_LIMIT_SEC
+    const seqLen = currentRound?.sequence.length ?? 5
+    const limit = getRoundTimeLimitSec(seqLen)
+    let initialTime = limit
+
     if (
       savedSession &&
       savedSession.roundIndex === roundState.roundIndex &&
@@ -239,7 +231,7 @@ export function ArkalonVision({
       const elapsedSec = Math.floor(
         (Date.now() - savedSession.roundStartTimestamp) / 1000
       )
-      initialTime = Math.max(0, ROUND_INPUT_TIME_LIMIT_SEC - elapsedSec)
+      initialTime = Math.max(0, limit - elapsedSec)
     }
 
     setTimeLeft(initialTime)
@@ -261,16 +253,20 @@ export function ArkalonVision({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [roundState.phase, roundState.roundIndex, handleTimeout, savedSession])
+  }, [
+    roundState.phase,
+    roundState.roundIndex,
+    currentRound,
+    handleTimeout,
+    savedSession
+  ])
 
   const handleGlyphPress = useCallback(
     (glyph: string) => {
       if (!currentRound || roundState.phase !== 'input') return
-
       const sequence = data.reverseEntry
         ? [...currentRound.sequence].reverse()
         : currentRound.sequence
-
       const nextIndex = roundState.entered.length
       const expected = sequence[nextIndex]
       const isCorrect = glyph === expected
@@ -313,7 +309,7 @@ export function ArkalonVision({
           if (nextRoundIndex < data.rounds.length) {
             setRoundState({
               roundIndex: nextRoundIndex,
-              phase: 'display',
+              phase: 'countdown',
               entered: [],
               errors: 0,
               startMs: 0
@@ -347,7 +343,6 @@ export function ArkalonVision({
       onComplete
     ]
   )
-
   if (!currentRound) return null
 
   const sequence = data.reverseEntry
@@ -363,10 +358,9 @@ export function ArkalonVision({
         <span>
           Round {roundState.roundIndex + 1} of {data.rounds.length}
         </span>
-        {data.reverseEntry &&
-          roundState.roundIndex === data.rounds.length - 1 && (
-            <span className="text-accent-cipher">Reverse entry</span>
-          )}
+        {data.reverseEntry && (
+          <span className="text-accent-cipher">Reverse entry</span>
+        )}
       </div>
 
       {/* Responsive Decaying Timer Bar */}
@@ -377,13 +371,11 @@ export function ArkalonVision({
               className={`h-full rounded-full transition-all duration-1000 ease-linear ${
                 timeLeft <= 3 ? 'bg-status-fail' : 'bg-accent-recall'
               }`}
-              style={{
-                width: `${(timeLeft / ROUND_INPUT_TIME_LIMIT_SEC) * 100}%`
-              }}
+              style={{ width: `${(timeLeft / roundTimeLimitSec) * 100}%` }}
               role="progressbar"
               aria-valuenow={timeLeft}
               aria-valuemin={0}
-              aria-valuemax={ROUND_INPUT_TIME_LIMIT_SEC}
+              aria-valuemax={roundTimeLimitSec}
               aria-label="Input time remaining"
             />
           </div>
@@ -403,6 +395,7 @@ export function ArkalonVision({
       <div className="relative w-full rounded-xl border border-border-subtle bg-surface-panel p-4 min-h-48">
         {roundState.phase === 'countdown' && (
           <StartCountdownOverlay
+            warningMessage={data.reverseEntry ? 'REVERSE SEQUENCE' : null}
             onComplete={() =>
               setRoundState((prev) => ({ ...prev, phase: 'display' }))
             }
@@ -420,12 +413,11 @@ export function ArkalonVision({
 
         {(roundState.phase === 'input' || roundState.phase === 'feedback') && (
           <div className="flex flex-col gap-4">
-            {data.reverseEntry &&
-              roundState.roundIndex === data.rounds.length - 1 && (
-                <p className="text-center text-xs text-text-muted">
-                  Enter the sequence in reverse order
-                </p>
-              )}
+            {data.reverseEntry && (
+              <p className="text-center text-xs text-text-muted">
+                Enter the sequence in reverse order
+              </p>
+            )}
             <GlyphKeypad
               glyphs={currentRound.keypadOrder}
               onGlyphPress={handleGlyphPress}
