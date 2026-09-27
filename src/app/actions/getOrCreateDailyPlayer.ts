@@ -74,14 +74,14 @@ export async function getOrCreateDailyPlayer() {
     })
   } else {
     try {
-      const res = await fetch(
-        `${networkUrl}/api/identity/profile?coreId=${coreId}`,
-        {
-          headers: {
-            'x-internal-secret': process.env.INTERNAL_SERVICE_SECRET || ''
-          }
-        }
-      )
+      const res = await fetch(`${networkUrl}/api/identity/provision`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': process.env.INTERNAL_SERVICE_SECRET || ''
+        },
+        body: JSON.stringify({ coreId })
+      })
       if (res.ok) {
         const data = await res.json()
         nickname = data.nickname || data.displayName
