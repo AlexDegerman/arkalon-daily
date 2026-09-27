@@ -33,9 +33,10 @@ export async function getOrCreateDailyPlayer() {
   }
 
   // 1. If no root cookie, request identity from Network Hub API
+  const networkUrl =
+    process.env.INTERNAL_NETWORK_URL ?? 'http://arkalon-network:3000'
+
   if (!coreId || !sessionToken) {
-    const networkUrl =
-      process.env.INTERNAL_NETWORK_URL ?? 'http://arkalon-network:3000'
     const res = await fetch(`${networkUrl}/api/identity/provision`, {
       method: 'POST',
       headers: {
@@ -71,6 +72,22 @@ export async function getOrCreateDailyPlayer() {
       path: '/',
       maxAge: THIRTY_DAYS
     })
+  } else {
+    try {
+      const res = await fetch(
+        `${networkUrl}/api/identity/profile?coreId=${coreId}`,
+        {
+          headers: {
+            'x-internal-secret': process.env.INTERNAL_SERVICE_SECRET || ''
+          }
+        }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        nickname = data.nickname || data.displayName
+        networkShortId = data.shortId
+      }
+    } catch {}
   }
 
   // 2. Ensure player exists in Daily's local database
