@@ -10,7 +10,7 @@ import type { CategoryStatus } from '@/types/puzzle'
 
 const LOADING_STATUSES: CategoryStatus[] = CATEGORY_ORDER.map((slug) => ({
   category: slug,
-  status: 'available',
+  status: 'trial',
   streakDays: 0,
   trialCompleted: false
 }))
@@ -50,14 +50,33 @@ export function HomeContent() {
   }, [])
 
   useEffect(() => {
-    const playerId = getPlayerId()
-    if (!playerId) return
+    let active = true
 
-    getCategoryStatuses(playerId).then((res) => {
-      if (res.success && res.statuses) {
-        setStatuses(res.statuses)
+    function loadStatuses(id: string) {
+      getCategoryStatuses(id).then((res) => {
+        if (active && res.success && res.statuses) {
+          setStatuses(res.statuses)
+        }
+      })
+    }
+
+    const existingId = getPlayerId()
+    if (existingId) {
+      loadStatuses(existingId)
+    }
+
+    function onPlayerReady(e: Event) {
+      const customEvent = e as CustomEvent<string>
+      if (customEvent.detail) {
+        loadStatuses(customEvent.detail)
       }
-    })
+    }
+
+    window.addEventListener('arkalon_player_ready', onPlayerReady)
+    return () => {
+      active = false
+      window.removeEventListener('arkalon_player_ready', onPlayerReady)
+    }
   }, [])
 
   const completedCount = statuses.filter(

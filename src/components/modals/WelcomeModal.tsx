@@ -20,6 +20,9 @@ export function WelcomeModal() {
   useEffect(() => {
     getOrCreateDailyPlayer().then(({ coreId, displayName }) => {
       localStorage.setItem('arkalon_daily_player_id', coreId)
+      window.dispatchEvent(
+        new CustomEvent('arkalon_player_ready', { detail: coreId })
+      )
       setDisplayName(displayName)
       const storedVersion = localStorage.getItem('arkalon_daily_version')
       if (!storedVersion) {
