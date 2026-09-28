@@ -6,6 +6,7 @@ import { z } from 'zod'
 import pool from '@/lib/db'
 import { getUtcDateString } from '@/lib/puzzles/hmac'
 import { generateWithValidation } from '@/lib/puzzles/validateChallenge'
+import { generateDailySeeds } from '@/app/actions/generateDailySeeds'
 import type {
   PuzzleCategory,
   PuzzleSeedData,
@@ -92,7 +93,7 @@ export async function getDailyChallenge(
     let challenge = isDev ? null : dailyChallengeCache.get(cacheKey)
 
     if (!challenge) {
-      const puzzleRow = await pool.query<{
+      let puzzleRow = await pool.query<{
         puzzle_date: string
         category: string
         puzzle_family_id: string
@@ -104,6 +105,22 @@ export async function getDailyChallenge(
           WHERE puzzle_date = $1 AND category = $2`,
         [todayUtc, category]
       )
+
+      if (puzzleRow.rows.length === 0) {
+        await generateDailySeeds(todayUtc)
+        puzzleRow = await pool.query<{
+          puzzle_date: string
+          category: string
+          puzzle_family_id: string
+          family_index: number
+          seed: string
+        }>(
+          `SELECT puzzle_date::text, category, puzzle_family_id, family_index, seed
+            FROM daily_puzzles
+            WHERE puzzle_date = $1 AND category = $2`,
+          [todayUtc, category]
+        )
+      }
 
       if (puzzleRow.rows.length === 0) {
         return {
