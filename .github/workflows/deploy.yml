@@ -54,4 +54,7 @@ jobs:
 
             docker exec arkalon-daily node -e "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
+            echo "Cleaning up dangling images from previous deploy..."
+            docker image prune -f
+
             echo "Deployment of ${DEPLOY_SHA} complete and healthy!"
