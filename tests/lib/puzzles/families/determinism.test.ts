@@ -4,32 +4,31 @@ import {
   CATEGORY_FAMILY_MAP
 } from '@/lib/puzzles/familyRegistry'
 import { CATEGORY_ORDER } from '@/constants/categories'
-import type { PuzzleCategory } from '@/types/puzzle'
 
 const SEEDS = ['00000001', 'deadbeef', 'a1b2c3d4', '0f0f0f0f', '12345678']
 
 describe('cross-family determinism', () => {
-  it('every family is pure: identical seed yields byte-identical output', () => {
+  it('every family is pure: identical seed yields identical output', () => {
     for (const family of FAMILY_REGISTRY.values()) {
       for (const seed of SEEDS) {
-        const a = JSON.stringify(family.generate(seed))
-        const b = JSON.stringify(family.generate(seed))
-        expect(a, `${family.id} @ ${seed}`).toBe(b)
+        const a = family.generate(seed)
+        const b = family.generate(seed)
+        expect(a, `${family.id} @ ${seed}`).toEqual(b)
       }
     }
   })
 
   it('different seeds yield different challenges', () => {
     for (const family of FAMILY_REGISTRY.values()) {
-      const a = JSON.stringify(family.generate(SEEDS[0]))
-      const b = JSON.stringify(family.generate(SEEDS[1]))
-      expect(a, family.id).not.toBe(b)
+      const a = family.generate(SEEDS[0])
+      const b = family.generate(SEEDS[1])
+      expect(a, family.id).not.toEqual(b)
     }
   })
 
   it('every category maps to a registered family', () => {
     for (const category of CATEGORY_ORDER) {
-      const familyId = CATEGORY_FAMILY_MAP[category as PuzzleCategory]
+      const familyId = CATEGORY_FAMILY_MAP[category]
       expect(FAMILY_REGISTRY.has(familyId)).toBe(true)
     }
   })
