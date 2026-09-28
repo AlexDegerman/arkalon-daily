@@ -24,7 +24,7 @@ interface RateLimitState {
 
 const rateLimitMap = new Map<string, RateLimitState>()
 
-export function clearRateLimitMap(): void {
+export async function clearRateLimitMap(): Promise<void> {
   rateLimitMap.clear()
 }
 
