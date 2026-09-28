@@ -53,8 +53,9 @@ export interface NetworkAlert {
 // Bump 'id' whenever a game launches or receives a major update to show the badge to all players.
 export const LATEST_NETWORK_ALERT = {
   id: 'arkalon-daily-v1',
-  type: 'new' as 'new' | 'updated' | null
+  type: null as 'new' | 'updated' | null
 }
+
 const SEEN_ALERT_STORAGE_KEY = 'arkalon_network_seen_alert'
 const DISCOVERY_STORAGE_KEY = 'arkalon_network_widget_discovered'
 
