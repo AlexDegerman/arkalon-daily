@@ -575,72 +575,84 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     ) => {
       if (!puzzleInfo || !playerIdRef.current || submittingRef.current) return
       submittingRef.current = true
-      if (isTrial) {
-        submittingRef.current = false
-        const pid = playerIdRef.current
-        await completeTrial(pid, category)
-        const ps = previewScore ?? 50
-        setResultScore(ps)
-        setResultMetrics({ ...displayMetrics, isTrial: true })
-        setPhase('result')
-        return
-      }
-
-      setPhase('submitting')
-      const pid = playerIdRef.current
-      const res = await submitResult({
-        playerId: pid,
-        category,
-        puzzleFamilyId: puzzleInfo.puzzleFamilyId,
-        puzzleDate: puzzleInfo.puzzleDate,
-        elapsedMs: metrics.totalElapsedMs,
-        familyMetrics: metrics
-      })
-
-      if (!res.success) {
-        setErrorMsg(res.error ?? 'Submission failed')
-        setPhase('error')
-        return
-      }
-
-      const score = res.normalizedScore ?? 0
-      // Result sting matches the rarity frame/aura on the result screen
-      play(`result-${getScoreRarity(score)}` as SoundKey)
-
-      if (arkalonTTSEnabled) {
-        speakArkalon(getResultTTSLine(score), arkalonVolume)
-      }
 
       try {
-        localStorage.removeItem(`arkalon_daily_${category}_session`)
-      } catch {}
-      setResultScore(score)
-      setStreakDays(res.currentStreak ?? 0)
-      setResultMetrics(displayMetrics)
-      const statusesRes = await getCategoryStatuses(pid)
-      if (statusesRes.success && statusesRes.statuses) {
-        setAllStatuses(statusesRes.statuses)
-        if (
-          arkalonTTSEnabled &&
-          statusesRes.statuses.every(
-            (s) => s.status === 'solved' || s.status === 'failed'
-          )
-        ) {
-          speakArkalon(TTS_LINES.allComplete, arkalonVolume)
+        if (isTrial) {
+          submittingRef.current = false
+          const pid = playerIdRef.current
+          await completeTrial(pid, category)
+          const ps = previewScore ?? 50
+          setResultScore(ps)
+          setResultMetrics({ ...displayMetrics, isTrial: true })
+          setPhase('result')
+          return
         }
-      }
-      setResultMetrics(displayMetrics)
 
-      // Surface milestone overlay if a new milestone was reached
-      if (res.newMilestone) {
-        setPendingMilestone(res.newMilestone)
-        // Show recovery prompt on first milestone if tutorial not yet seen
-        if (!recoveryTutorialShown) {
-          setShowRecoveryPrompt(true)
+        setPhase('submitting')
+        const pid = playerIdRef.current
+        const res = await submitResult({
+          playerId: pid,
+          category,
+          puzzleFamilyId: puzzleInfo.puzzleFamilyId,
+          puzzleDate: puzzleInfo.puzzleDate,
+          elapsedMs: metrics.totalElapsedMs,
+          familyMetrics: metrics
+        })
+
+        if (!res.success) {
+          submittingRef.current = false
+          setErrorMsg(res.error ?? 'Submission failed')
+          setPhase('error')
+          return
         }
-      }
 
-      setPhase('result')
+        const score = res.normalizedScore ?? 0
+        // Result sting matches the rarity frame/aura on the result screen
+        play(`result-${getScoreRarity(score)}` as SoundKey)
+
+        if (arkalonTTSEnabled) {
+          speakArkalon(getResultTTSLine(score), arkalonVolume)
+        }
+
+        try {
+          localStorage.removeItem(`arkalon_daily_${category}_session`)
+        } catch {}
+        setResultScore(score)
+        setStreakDays(res.currentStreak ?? 0)
+        setResultMetrics(displayMetrics)
+        const statusesRes = await getCategoryStatuses(pid)
+        if (statusesRes.success && statusesRes.statuses) {
+          setAllStatuses(statusesRes.statuses)
+          if (
+            arkalonTTSEnabled &&
+            statusesRes.statuses.every(
+              (s) => s.status === 'solved' || s.status === 'failed'
+            )
+          ) {
+            speakArkalon(TTS_LINES.allComplete, arkalonVolume)
+          }
+        }
+        setResultMetrics(displayMetrics)
+
+        // Surface milestone overlay if a new milestone was reached
+        if (res.newMilestone) {
+          setPendingMilestone(res.newMilestone)
+          // Show recovery prompt on first milestone if tutorial not yet seen
+          if (!recoveryTutorialShown) {
+            setShowRecoveryPrompt(true)
+          }
+        }
+
+        setPhase('result')
+      } catch (err) {
+        submittingRef.current = false
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : 'Submission failed. Please check your connection and retry.'
+        )
+        setPhase('error')
+      }
     },
     [puzzleInfo, isTrial, category, play, arkalonTTSEnabled, arkalonVolume]
   )
@@ -860,22 +872,35 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
                 onClick={() => {
                   submittingRef.current = false
                   setIsTrial(false)
-                  if (arkalonTTSEnabled) {
-                    speakArkalon(
-                      TTS_LINES.categoryEntry[category],
-                      arkalonVolume
-                    )
-                  }
-                  setPhase('playing')
+                  setPhase('loading')
                   // Reload fresh seed data for the real attempt
                   const pid = playerIdRef.current
                   if (pid) {
-                    getDailyChallenge(pid, category).then((res) => {
-                      if (res.success && res.seedData) {
-                        setSeedData(res.seedData)
-                        setPuzzleInfo(res.puzzleInfo!)
-                      }
-                    })
+                    getDailyChallenge(pid, category)
+                      .then((res) => {
+                        if (res.success && res.seedData && res.puzzleInfo) {
+                          setSeedData(res.seedData)
+                          setPuzzleInfo(res.puzzleInfo)
+                          if (arkalonTTSEnabled) {
+                            speakArkalon(
+                              TTS_LINES.categoryEntry[category],
+                              arkalonVolume
+                            )
+                          }
+                          setPhase('playing')
+                        } else {
+                          setErrorMsg(res.error ?? 'Failed to load challenge')
+                          setPhase('error')
+                        }
+                      })
+                      .catch((err) => {
+                        setErrorMsg(
+                          err instanceof Error
+                            ? err.message
+                            : 'Failed to load challenge. Please retry.'
+                        )
+                        setPhase('error')
+                      })
                   }
                 }}
                 className="w-full max-w-xs rounded-lg px-6 py-3 text-sm font-semibold text-bg-base transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-accent-recall"
