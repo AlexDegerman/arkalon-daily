@@ -30,7 +30,6 @@ Unit and integration tests covering Arkalon Daily's deterministic puzzle engine,
 - **leaderboardPeriods**: Tests `getIsoWeekStartUtc` Monday computation across month and year boundaries, `addDaysUtc`, and the threshold tables.
 - **displayMetrics**: Covers `buildDisplayMetrics` for all five categories including division-by-zero guards and Depths efficiency/waste calculation.
 - **hmac**: Tests `deriveDailySeed` determinism, missing-secret throw, and `getUtcDateString` formatting.
-- **updates / ttsLines / networkRecommendations**: Tests `LATEST_UPDATE` ordering, result TTS tier boundaries, milestone line lookup, and recommendation picker null and single-entry behavior.
 
 ## 🖥️ Frontend Test Coverage
 - **Stores**: `uiStore` setters and modal toggles, `puzzleStore` `pauseSignal` increment, and `musicStore` context switching with no-repeat track advancement.

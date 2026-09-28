@@ -24,6 +24,10 @@ interface RateLimitState {
 
 const rateLimitMap = new Map<string, RateLimitState>()
 
+export function clearRateLimitMap(): void {
+  rateLimitMap.clear()
+}
+
 function checkRateLimit(playerId: string): boolean {
   const now = Date.now()
   const state = rateLimitMap.get(playerId) ?? { timestamps: [] }
