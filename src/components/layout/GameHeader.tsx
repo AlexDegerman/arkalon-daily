@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { HelpCircle } from 'lucide-react'
 import { SoundControlButton } from '@/components/ui/SoundControlButton'
 import type { PuzzleCategory } from '@/types/puzzle'
 import { CATEGORIES } from '@/constants/categories'
@@ -8,9 +9,14 @@ import { CATEGORIES } from '@/constants/categories'
 interface GameHeaderProps {
   category?: PuzzleCategory
   familyIndex?: number
+  onOpenBriefing?: () => void
 }
 
-export function GameHeader({ category, familyIndex }: GameHeaderProps) {
+export function GameHeader({
+  category,
+  familyIndex,
+  onOpenBriefing
+}: GameHeaderProps) {
   const cat = category ? CATEGORIES[category] : null
 
   return (
@@ -42,6 +48,17 @@ export function GameHeader({ category, familyIndex }: GameHeaderProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          {onOpenBriefing && (
+            <button
+              type="button"
+              onClick={onOpenBriefing}
+              title="Review Rules & Modifiers"
+              aria-label="Review Rules & Modifiers"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            >
+              <HelpCircle size={18} />
+            </button>
+          )}
           <SoundControlButton />
         </div>
       </header>

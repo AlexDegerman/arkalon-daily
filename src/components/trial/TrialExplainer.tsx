@@ -33,13 +33,13 @@ const EXPLAINER_SCREENS: Record<PuzzleCategory, ExplainerScreen[]> = {
   ],
   cipher: [
     {
-      text: 'Study the card sequences or rule discovery panels to uncover the hidden pattern behind each puzzle.'
+      text: 'Analyze the shape sequences or rule discovery boxes to deduce the hidden pattern governing the puzzle.'
     },
     {
-      text: 'Choose the correct match before the round timer runs out. Accuracy and efficient solving determine your score.'
+      text: 'Select the correct matching shape before the round time gauge empties. Accuracy and error efficiency dictate your score.'
     },
     {
-      text: 'Daily challenges rotate through sequence patterns, YES/NO rule discovery, and multi-constraint elimination puzzles.'
+      text: 'Daily challenges cycle through sequence rotations, inductive rule discovery (YES/NO), and multi-constraint elimination.'
     }
   ],
   strike: [

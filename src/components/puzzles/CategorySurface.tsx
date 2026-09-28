@@ -46,9 +46,15 @@ import { useTabGuard } from '@/hooks/useTabGuard'
 import { useMusicStore } from '@/app/stores/musicStore'
 import { buildDisplayMetrics } from '@/lib/displayMetrics'
 
+import {
+  VariationBriefingModal,
+  type BriefingInfo
+} from '@/components/modals/VariationBriefingModal'
+
 type SurfacePhase =
   | 'loading'
   | 'trial-explainer'
+  | 'briefing'
   | 'playing'
   | 'submitting'
   | 'result'
@@ -56,6 +62,271 @@ type SurfacePhase =
 
 interface CategorySurfaceProps {
   category: PuzzleCategory
+}
+
+function resolveBriefing(
+  category: PuzzleCategory,
+  seedData?: PuzzleSeedData | null
+): BriefingInfo | null {
+  if (!seedData) return null
+  const profile = seedData.profile ?? {}
+  const familyData = (seedData.familyData ?? {}) as Record<string, unknown>
+
+  if (category === 'depths') {
+    const clueType = String(profile.clueType ?? 'numeric')
+    const key = `depths:${clueType}`
+    if (clueType === 'directional') {
+      return {
+        modifierKey: key,
+        title: 'Compass Radar Active',
+        bullets: [
+          'Clue tiles display arrows (→, ↘, ↓, ↙, etc.) pointing directly toward the nearest crystal.',
+          'The numbers along the top and left edges indicate the total crystals in that line. Cross-reference them with arrow directions.'
+        ]
+      }
+    }
+    if (clueType === 'hot_cold') {
+      return {
+        modifierKey: key,
+        title: 'Thermal Radar Active',
+        bullets: [
+          'Clue tiles display proximity: HOT (≤1 step), WARM (≤3 steps), or COLD (>3 steps).',
+          'Use top and left border counts to eliminate empty rows and columns.'
+        ]
+      }
+    }
+    if (clueType === 'adjacency_count') {
+      return {
+        modifierKey: key,
+        title: 'Neighborhood Radar Active',
+        bullets: [
+          'Clue tiles indicate the exact number of crystals in the 8 immediately surrounding cells.',
+          'Outer border numbers indicate total crystals in that line.'
+        ]
+      }
+    }
+  }
+
+  if (category === 'strike') {
+    const fn = String(profile.motionFunction ?? 'linear')
+    const key = `strike:${fn}`
+    if (fn === 'deceptive') {
+      return {
+        modifierKey: key,
+        title: 'Deceptive Kinematics',
+        bullets: [
+          'The reticle will decelerate and briefly reverse backwards before bursting forward through the target.',
+          'Anticipate the feint and hold fire until the reticle completes its reverse.'
+        ]
+      }
+    }
+    if (fn === 'staccato') {
+      return {
+        modifierKey: key,
+        title: 'Stepper Motor Motion',
+        bullets: [
+          'The reticle advances in rapid 250ms bursts separated by 150ms dead-stops.',
+          'Time your shot as the reticle pauses or steps into the target zone.'
+        ]
+      }
+    }
+    if (fn === 'pendulum') {
+      return {
+        modifierKey: key,
+        title: 'Harmonic Gravity Sweep',
+        bullets: [
+          'The reticle sweeps at peak velocity through the center and decelerates at the outer track edges.'
+        ]
+      }
+    }
+    if (fn === 'erratic') {
+      return {
+        modifierKey: key,
+        title: 'Erratic Frequency Flutter',
+        bullets: [
+          'High-frequency vibration waves create micro-jitters along the reticle trajectory.'
+        ]
+      }
+    }
+  }
+
+  if (category === 'recall') {
+    const isReverse = Boolean(familyData?.reverseEntry || profile?.reverseEntry)
+    const isShuffled = Boolean(
+      familyData?.randomizedLayout || profile?.randomizedLayout
+    )
+    if (isReverse && isShuffled) {
+      return {
+        modifierKey: 'recall:nightmare',
+        title: 'Scrambled Reverse Entry',
+        bullets: [
+          'Enter the sequence in exact reverse order (last glyph seen back to first).',
+          'Keypad symbols shuffle positions every round—visually scan for each glyph.'
+        ]
+      }
+    }
+    if (isReverse) {
+      return {
+        modifierKey: 'recall:reverse',
+        title: 'Reverse Sequence Entry',
+        bullets: [
+          'Enter the glyphs in reverse order (from the last symbol displayed back to the first).'
+        ]
+      }
+    }
+    if (isShuffled) {
+      return {
+        modifierKey: 'recall:shuffled',
+        title: 'Scrambled Keypad Matrix',
+        bullets: [
+          'The keypad buttons shuffle positions every round to prevent muscle-memory shortcuts.'
+        ]
+      }
+    }
+  }
+
+  if (category === 'cipher') {
+    const rounds = (familyData?.rounds as Array<{ generator: string }>) ?? []
+    const generators = (profile?.patternGenerators as string[]) ?? []
+    const hasRuleDiscovery =
+      rounds.some((r) => r?.generator === 'rule_discovery') ||
+      generators.includes('rule_discovery')
+    const hasConstrained =
+      rounds.some((r) => r?.generator === 'constrained_choice') ||
+      generators.includes('constrained_choice')
+    const hasTriVariable =
+      rounds.some((r) => r?.generator === 'tri_variable') ||
+      generators.includes('tri_variable')
+    const hasDualVariable =
+      rounds.some((r) => r?.generator === 'dual_variable') ||
+      generators.includes('dual_variable')
+
+    if (hasRuleDiscovery) {
+      return {
+        modifierKey: 'cipher:rule_discovery',
+        title: 'Inductive Rule Discovery',
+        bullets: [
+          'Compare the YES and NO boxes to deduce the single governing rule (shape, color, size, or warm/cool tone).',
+          'Choose the one shape that satisfies the rule.'
+        ]
+      }
+    }
+    if (hasConstrained) {
+      return {
+        modifierKey: 'cipher:constrained_choice',
+        title: 'Constraint Elimination',
+        bullets: [
+          'Read all listed constraints. Distractor options are near-misses that break exactly one rule.',
+          'Select the one shape that satisfies every constraint.'
+        ]
+      }
+    }
+    if (hasTriVariable) {
+      return {
+        modifierKey: 'cipher:tri_variable',
+        title: 'Tri-Variable Cycles',
+        bullets: [
+          'Shapes, colors, and sizes cycle independently on out-of-sync loops.',
+          'Isolate one attribute at a time to predict what comes next.'
+        ]
+      }
+    }
+    if (hasDualVariable) {
+      return {
+        modifierKey: 'cipher:dual_variable',
+        title: 'Dual-Variable Cycles',
+        bullets: [
+          'Shapes and colors cycle on two separate alternating rhythms while size stays constant.',
+          'Track both independent cycles to find the matching pair.'
+        ]
+      }
+    }
+  }
+
+  if (category === 'surge') {
+    const pattern = String(profile?.spawnPattern ?? 'single')
+    const behavior = String(profile?.targetBehavior ?? 'stationary')
+    const key = `surge:${pattern}:${behavior}`
+
+    const patternDetails: Record<string, { title: string; bullets: string[] }> =
+      {
+        corner_seq: {
+          title: 'Corner Sequence',
+          bullets: [
+            'Energy nodes spawn sequentially around the four screen corners.',
+            'Prepare for rapid cross-screen flick jumps as targets cycle clockwise between quadrants.'
+          ]
+        },
+        spiral: {
+          title: 'Inward Spiral Vortex',
+          bullets: [
+            'Nodes spawn along a rotating golden-angle vortex swirling inward toward the center.',
+            'Track the orbital rotation to anticipate where each subsequent node appears.'
+          ]
+        },
+        wave: {
+          title: 'Sinusoidal Wave Flow',
+          bullets: [
+            'Nodes spawn along an oscillating horizontal sine wave across the screen.',
+            'Follow the rhythmic crests and troughs as the wave sweeps.'
+          ]
+        },
+        lane_switch: {
+          title: 'Corridor Lane Switch',
+          bullets: [
+            'Nodes are locked to top, middle, and bottom tracks, jumping between dashed boundary rails.',
+            'Shift focus vertically across the three corridor lanes.'
+          ]
+        },
+        triple_burst: {
+          title: 'Triple Burst Cluster',
+          bullets: [
+            'Nodes spawn in simultaneous clusters of three with extended lifetimes.',
+            'Quickly prioritize and clear all three targets in the cluster before they expire.'
+          ]
+        },
+        paired: {
+          title: 'Symmetrical Paired Nodes',
+          bullets: [
+            'Nodes spawn in simultaneous bilateral mirror pairs across the center.',
+            'Triage both sides of the arena in rapid succession.'
+          ]
+        },
+        center_out: {
+          title: 'Radial Shockwave',
+          bullets: [
+            'Nodes burst from the center outward toward the perimeter in expanding waves.',
+            'Track the outward expansion to tap targets before they decay.'
+          ]
+        }
+      }
+
+    const supportedBehaviorHints: Record<string, string> = {
+      fading: 'Target nodes fade and lose opacity over their lifetime.',
+      shrinking:
+        'Target nodes shrink in size over time, narrowing your tap target.',
+      growing: 'Target nodes expand in size as they mature.',
+      moving: 'Target nodes drift linearly across the arena.',
+      brief:
+        'Target nodes have shorter visibility windows—react immediately upon spawn.'
+    }
+
+    const info = patternDetails[pattern]
+    if (!info) return null
+
+    const bullets = [...info.bullets]
+    if (supportedBehaviorHints[behavior]) {
+      bullets.push(supportedBehaviorHints[behavior])
+    }
+
+    return {
+      modifierKey: key,
+      title: info.title,
+      bullets
+    }
+  }
+
+  return null
 }
 
 export function CategorySurface({ category }: CategorySurfaceProps) {
@@ -84,10 +355,42 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false)
   const [recoveryTutorialShown, setRecoveryTutorialShown] = useState(true)
   const [playerName, setPlayerName] = useState<string>('Player')
+  const [activeBriefing, setActiveBriefing] = useState<BriefingInfo | null>(
+    null
+  )
 
   const playerIdRef = useRef<string | null>(null)
   const dailySeedRef = useRef<PuzzleSeedData | null>(null)
   const submittingRef = useRef(false)
+  const dismissedBriefingsRef = useRef<Set<string>>(new Set())
+
+  const handleBriefingDismiss = useCallback(
+    (neverShowAgain: boolean) => {
+      if (activeBriefing) {
+        dismissedBriefingsRef.current.add(activeBriefing.modifierKey)
+        if (neverShowAgain) {
+          try {
+            const rawSeen = localStorage.getItem('arkalon_seen_modifiers')
+            const seenList: string[] = rawSeen ? JSON.parse(rawSeen) : []
+            if (!seenList.includes(activeBriefing.modifierKey)) {
+              seenList.push(activeBriefing.modifierKey)
+              localStorage.setItem(
+                'arkalon_seen_modifiers',
+                JSON.stringify(seenList)
+              )
+            }
+          } catch {}
+        }
+      }
+      setActiveBriefing(null)
+      if (arkalonTTSEnabled) {
+        speakArkalon(TTS_LINES.categoryEntry[category], arkalonVolume)
+      }
+      setPhase('playing')
+      setIsTrial(false)
+    },
+    [activeBriefing, arkalonTTSEnabled, arkalonVolume, category]
+  )
 
   // Retrieve playerId from localStorage
   function getPlayerId(): string | null {
@@ -118,69 +421,105 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
       setRecoveryTutorialShown(true)
     }
 
-    getDailyChallenge(playerId, category).then((res) => {
-      if (!res.success) {
-        submittingRef.current = false
-        setErrorMsg(res.error ?? 'Submission failed')
-        setPhase('error')
-        return
-      }
-      // Load display name for share card
-      try {
-        const storedName = localStorage.getItem('arkalon_daily_display_name')
-        if (storedName) setPlayerName(storedName)
-      } catch {
-        // localStorage unavailable
-      }
-      if (res.alreadyPlayed) {
-        // Rebuild today's result screen from the stored attempt
-        try {
-          localStorage.removeItem(`arkalon_daily_${category}_session`)
-        } catch {}
-        setPuzzleInfo(res.puzzleInfo ?? null)
-        setSeedData(res.seedData ?? null)
-        setStreakDays(res.streakDays ?? 0)
-        setResultScore(res.savedScore ?? 0)
-        setResultMetrics(
-          buildDisplayMetrics(
-            category,
-            res.savedFamilyMetrics ?? {},
-            res.seedData?.familyData
-          )
-        )
-        getCategoryStatuses(playerId).then((statusesRes) => {
-          if (statusesRes.success && statusesRes.statuses) {
-            setAllStatuses(statusesRes.statuses)
-          }
-        })
-        setPhase('result')
-        return
-      }
-      setStreakDays(res.streakDays ?? 0)
-      setPuzzleInfo(res.puzzleInfo!)
-      setSeedData(res.seedData!)
-      dailySeedRef.current = res.seedData!
-
-      const needsTrial = !res.trialsCompleted?.includes(category)
-      if (needsTrial) {
-        // Load trial-specific challenge from fixed trial seed
-        getTrialChallenge(playerId, category).then((trialRes) => {
-          if (trialRes.success && trialRes.seedData) {
-            setSeedData(trialRes.seedData)
-            setPhase('trial-explainer')
-          } else {
-            setErrorMsg(trialRes.error ?? 'Failed to load trial challenge')
-            setPhase('error')
-          }
-        })
-      } else {
-        if (arkalonTTSEnabled) {
-          speakArkalon(TTS_LINES.categoryEntry[category], arkalonVolume)
+    getDailyChallenge(playerId, category)
+      .then((res) => {
+        if (!res.success) {
+          submittingRef.current = false
+          setErrorMsg(res.error ?? 'Submission failed')
+          setPhase('error')
+          return
         }
-        setPhase('playing')
-        setIsTrial(false)
-      }
-    })
+        // Load display name for share card
+        try {
+          const storedName = localStorage.getItem('arkalon_daily_display_name')
+          if (storedName) setPlayerName(storedName)
+        } catch {
+          // localStorage unavailable
+        }
+        if (res.alreadyPlayed) {
+          // Rebuild today's result screen from the stored attempt
+          try {
+            localStorage.removeItem(`arkalon_daily_${category}_session`)
+          } catch {}
+          setPuzzleInfo(res.puzzleInfo ?? null)
+          setSeedData(res.seedData ?? null)
+          setStreakDays(res.streakDays ?? 0)
+          setResultScore(res.savedScore ?? 0)
+          setResultMetrics(
+            buildDisplayMetrics(
+              category,
+              res.savedFamilyMetrics ?? {},
+              res.seedData?.familyData
+            )
+          )
+          getCategoryStatuses(playerId)
+            .then((statusesRes) => {
+              if (statusesRes.success && statusesRes.statuses) {
+                setAllStatuses(statusesRes.statuses)
+              }
+            })
+            .catch(() => {})
+          setPhase('result')
+          return
+        }
+        setStreakDays(res.streakDays ?? 0)
+        setPuzzleInfo(res.puzzleInfo!)
+        setSeedData(res.seedData!)
+        dailySeedRef.current = res.seedData!
+
+        const needsTrial = !res.trialsCompleted?.includes(category)
+        if (needsTrial) {
+          // Load trial-specific challenge from fixed trial seed
+          getTrialChallenge(playerId, category)
+            .then((trialRes) => {
+              if (trialRes.success && trialRes.seedData) {
+                setSeedData(trialRes.seedData)
+                setPhase('trial-explainer')
+              } else {
+                setErrorMsg(trialRes.error ?? 'Failed to load trial challenge')
+                setPhase('error')
+              }
+            })
+            .catch(() => {
+              setErrorMsg('Could not load trial challenge. Please try again.')
+              setPhase('error')
+            })
+        } else {
+          // Check for unseen modifiers
+          const briefing = resolveBriefing(category, res.seedData!)
+          let alreadySeen = false
+          if (briefing) {
+            if (dismissedBriefingsRef.current.has(briefing.modifierKey)) {
+              alreadySeen = true
+            } else {
+              try {
+                const rawSeen = localStorage.getItem('arkalon_seen_modifiers')
+                const seenList: string[] = rawSeen ? JSON.parse(rawSeen) : []
+                alreadySeen = seenList.includes(briefing.modifierKey)
+              } catch {}
+            }
+          }
+          if (briefing && !alreadySeen) {
+            setActiveBriefing(briefing)
+            setPhase('briefing')
+          } else {
+            if (arkalonTTSEnabled) {
+              speakArkalon(TTS_LINES.categoryEntry[category], arkalonVolume)
+            }
+            setPhase('playing')
+            setIsTrial(false)
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('[CategorySurface] Error loading challenge:', err)
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : 'Could not establish connection to challenge server. Please retry.'
+        )
+        setPhase('error')
+      })
   }, [category, router, arkalonTTSEnabled, arkalonVolume])
 
   useEffect(() => {
@@ -436,14 +775,27 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     return (
       <div className="flex min-h-dvh flex-col">
         <GameHeader category={category} />
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
-          <p className="text-sm text-status-fail">{errorMsg}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="text-xs text-text-muted underline underline-offset-2"
-          >
-            Return home
-          </button>
+        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+          <p className="text-sm font-mono text-status-fail max-w-md">
+            {errorMsg}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setPhase('loading')
+                window.location.reload()
+              }}
+              className="rounded-lg border border-border-subtle bg-surface-panel px-4 py-2 text-xs font-mono font-bold text-text-primary hover:border-accent-recall transition-colors"
+            >
+              [ RETRY ]
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="text-xs text-text-muted underline underline-offset-2 hover:text-text-primary"
+            >
+              Return home
+            </button>
+          </div>
         </main>
       </div>
     )
@@ -457,6 +809,19 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
           category={category}
           onBeginTrial={handleTrialBegin}
           onSkip={handleTrialSkip}
+        />
+      </>
+    )
+  }
+
+  if (phase === 'briefing' && activeBriefing) {
+    return (
+      <>
+        <GameHeader category={category} />
+        <VariationBriefingModal
+          category={category}
+          briefing={activeBriefing}
+          onDismiss={handleBriefingDismiss}
         />
       </>
     )
@@ -601,9 +966,22 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     }
   }
 
+  const currentBriefing = seedData ? resolveBriefing(category, seedData) : null
+
   return (
     <div className="flex min-h-dvh flex-col overflow-x-hidden">
-      <GameHeader category={category} familyIndex={puzzleInfo?.familyIndex} />
+      <GameHeader
+        category={category}
+        familyIndex={puzzleInfo?.familyIndex}
+        onOpenBriefing={
+          currentBriefing
+            ? () => {
+                setActiveBriefing(currentBriefing)
+                setPhase('briefing')
+              }
+            : undefined
+        }
+      />
       <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-2.5 sm:px-4 py-3 sm:py-4">
         {renderPuzzle()}
       </main>

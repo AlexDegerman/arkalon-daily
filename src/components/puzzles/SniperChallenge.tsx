@@ -332,22 +332,27 @@ export function SniperChallenge({
         reticleElRef.current.style.left = `${logicalX * scale}px`
       }
 
-      // Auto-miss if reticle completes one full traversal without FIRE
+      // Auto-miss if reticle completes full traversal without FIRE
       let roundTripSec: number
 
       if (fn === 'deceptive' && currentShot) {
-        roundTripSec = calcDeceptivePassDuration(
-          currentShot.targetCenterX,
-          data.movementSpeed
-        )
+        roundTripSec =
+          calcDeceptivePassDuration(
+            currentShot.targetCenterX,
+            data.movementSpeed
+          ) + 0.5
       } else if (fn === 'staccato') {
-        roundTripSec = ((1200 / 45) * 0.4) / data.movementSpeed
+        roundTripSec = ((1200 / 45) * 0.4) / data.movementSpeed + 0.5
       } else if (fn === 'pendulum') {
-        roundTripSec = (520 * Math.PI) / (data.movementSpeed * 200)
+        roundTripSec = (520 * Math.PI) / (data.movementSpeed * 200) + 0.5
       } else if (fn === 'sinusoidal') {
-        roundTripSec = 1 / ((currentShot?.freqHz ?? 0.5) * data.movementSpeed)
+        roundTripSec = Math.max(
+          3.5,
+          2 / ((currentShot?.freqHz ?? 0.5) * data.movementSpeed)
+        )
       } else {
-        roundTripSec = (TRACK_LOGICAL_WIDTH * 2) / (data.movementSpeed * 200)
+        roundTripSec =
+          (TRACK_LOGICAL_WIDTH * 2) / (data.movementSpeed * 200) + 0.5
       }
 
       if (tSec >= roundTripSec) {
@@ -568,6 +573,9 @@ export function SniperChallenge({
         {isStarting && (
           <StartCountdownOverlay
             onComplete={() => {
+              shotStartRef.current = performance.now()
+              sessionStartRef.current = performance.now()
+              pausedMsRef.current = 0
               isStartingRef.current = false
               setIsStarting(false)
             }}
