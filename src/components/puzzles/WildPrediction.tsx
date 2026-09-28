@@ -297,11 +297,11 @@ export function WildPrediction({
   const finishedRef = useRef(false)
 
   const currentRound: CipherRound | undefined = data.rounds[roundIndex]
-  const roundTimeLimit = data.timerSeconds ?? null
+  const roundTimeLimit = data.timerSeconds ?? 16
 
   // Per-round countdown timer; waits for the ready-up countdown on session start
   useEffect(() => {
-    if (isStarting || roundTimeLimit === null) return
+    if (isStarting) return
     let initialTime = roundTimeLimit
     if (
       savedSession &&
@@ -317,7 +317,7 @@ export function WildPrediction({
     roundStartRef.current = Date.now()
     if (initialTime <= 0) {
       totalErrorsRef.current++
-      responseMsRef.current.push((roundTimeLimit ?? 0) * 1000)
+      responseMsRef.current.push(roundTimeLimit * 1000)
       advanceRound(false)
       return
     }

@@ -358,6 +358,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
   const [activeBriefing, setActiveBriefing] = useState<BriefingInfo | null>(
     null
   )
+  const [isManualBriefing, setIsManualBriefing] = useState(false)
 
   const playerIdRef = useRef<string | null>(null)
   const dailySeedRef = useRef<PuzzleSeedData | null>(null)
@@ -368,7 +369,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
     (neverShowAgain: boolean) => {
       if (activeBriefing) {
         dismissedBriefingsRef.current.add(activeBriefing.modifierKey)
-        if (neverShowAgain) {
+        if (neverShowAgain && !isManualBriefing) {
           try {
             const rawSeen = localStorage.getItem('arkalon_seen_modifiers')
             const seenList: string[] = rawSeen ? JSON.parse(rawSeen) : []
@@ -383,13 +384,20 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         }
       }
       setActiveBriefing(null)
+      setIsManualBriefing(false)
       if (arkalonTTSEnabled) {
         speakArkalon(TTS_LINES.categoryEntry[category], arkalonVolume)
       }
       setPhase('playing')
       setIsTrial(false)
     },
-    [activeBriefing, arkalonTTSEnabled, arkalonVolume, category]
+    [
+      activeBriefing,
+      isManualBriefing,
+      arkalonTTSEnabled,
+      arkalonVolume,
+      category
+    ]
   )
 
   // Retrieve playerId from localStorage
@@ -821,6 +829,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         <VariationBriefingModal
           category={category}
           briefing={activeBriefing}
+          isManual={isManualBriefing}
           onDismiss={handleBriefingDismiss}
         />
       </>
@@ -976,6 +985,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
         onOpenBriefing={
           currentBriefing
             ? () => {
+                setIsManualBriefing(true)
                 setActiveBriefing(currentBriefing)
                 setPhase('briefing')
               }

@@ -21,7 +21,7 @@ export function GameHeader({
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 py-3">
+      <header className="mx-auto flex w-full max-w-180 items-center justify-between px-2.5 sm:px-4 py-3">
         <Link
           href="/"
           className="flex items-center gap-1.5 text-xs font-semibold tracking-widest select-none"

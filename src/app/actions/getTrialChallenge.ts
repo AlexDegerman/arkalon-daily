@@ -99,7 +99,7 @@ export async function getTrialChallenge(
     }
 
     if (category === 'cipher') {
-      // Untimed standard sequence matching so new players can study colors and shapes without timer panic.
+      // Standard sequence matching with generous time so new players can study colors and shapes without timer panic.
       const familyData = seedData.familyData as {
         rounds?: { generator: string }[]
       }
@@ -109,7 +109,7 @@ export async function getTrialChallenge(
           r.generator === 'rule_discovery' ||
           r.generator === 'constrained_choice'
       )
-      acceptable = !hasComplexGenerator && profile.timerSeconds === null
+      acceptable = !hasComplexGenerator && (profile.timerSeconds ?? 0) >= 14
     }
 
     if (category === 'depths') {

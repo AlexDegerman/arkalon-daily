@@ -15,7 +15,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['alternating'],
     stepsShown: 5,
     choiceCount: 4,
-    timerSeconds: null,
+    timerSeconds: 14,
     roundCount: 8
   },
   {
@@ -29,7 +29,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['dual_variable'],
     stepsShown: 5,
     choiceCount: 4,
-    timerSeconds: null,
+    timerSeconds: 15,
     roundCount: 7
   },
   {
@@ -43,7 +43,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['rule_discovery'],
     stepsShown: 5,
     choiceCount: 4,
-    timerSeconds: null,
+    timerSeconds: 18,
     roundCount: 8
   },
   {
@@ -57,14 +57,14 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['dual_variable', 'rule_discovery'],
     stepsShown: 4,
     choiceCount: 5,
-    timerSeconds: null,
+    timerSeconds: 18,
     roundCount: 9
   },
   {
     generators: ['rule_discovery'],
     stepsShown: 3,
     choiceCount: 4,
-    timerSeconds: null,
+    timerSeconds: 18,
     roundCount: 7
   },
   {
@@ -92,7 +92,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['tri_variable', 'rule_discovery'],
     stepsShown: 4,
     choiceCount: 6,
-    timerSeconds: null,
+    timerSeconds: 18,
     roundCount: 9
   },
   {

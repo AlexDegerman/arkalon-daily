@@ -14,12 +14,14 @@ interface VariationBriefingModalProps {
   category: PuzzleCategory
   briefing: BriefingInfo
   onDismiss: (neverShowAgain: boolean) => void
+  isManual?: boolean
 }
 
 export function VariationBriefingModal({
   category,
   briefing,
-  onDismiss
+  onDismiss,
+  isManual = false
 }: VariationBriefingModalProps) {
   const [neverShowAgain, setNeverShowAgain] = useState(false)
   const cat = CATEGORIES[category]
@@ -66,18 +68,20 @@ export function VariationBriefingModal({
           ))}
         </ul>
 
-        {/* Don't show again checkbox */}
-        <label className="mb-5 flex items-center gap-2 text-[11px] text-text-muted cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={neverShowAgain}
-            onChange={(e) => setNeverShowAgain(e.target.checked)}
-            className="rounded border-border-subtle bg-bg-base text-accent-recall accent-accent-recall cursor-pointer"
-          />
-          <span>Don&apos;t show tips for this variation again</span>
-        </label>
+        {/* Don't show again checkbox (suppressed during manual (?) review) */}
+        {!isManual && (
+          <label className="mb-5 flex items-center gap-2 text-[11px] text-text-muted cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={neverShowAgain}
+              onChange={(e) => setNeverShowAgain(e.target.checked)}
+              className="rounded border-border-subtle bg-bg-base text-accent-recall accent-accent-recall cursor-pointer"
+            />
+            <span>Don&apos;t show tips for this variation again</span>
+          </label>
+        )}
 
-        {/* Continue Button */}
+        {/* Action Button */}
         <button
           type="button"
           onClick={() => onDismiss(neverShowAgain)}
@@ -85,7 +89,7 @@ export function VariationBriefingModal({
           className="w-full rounded-lg py-2.5 text-xs font-black uppercase tracking-wider text-bg-base transition-opacity hover:opacity-90 font-mono cursor-pointer"
           style={{ backgroundColor: cat.accentColor }}
         >
-          [ CONTINUE ]
+          {isManual ? '[ CLOSE ]' : '[ CONTINUE ]'}
         </button>
       </div>
     </div>
