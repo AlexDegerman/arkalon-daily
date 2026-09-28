@@ -297,11 +297,11 @@ export function WildPrediction({
   const finishedRef = useRef(false)
 
   const currentRound: CipherRound | undefined = data.rounds[roundIndex]
-  const roundTimeLimit = data.timerSeconds ?? 12
+  const roundTimeLimit = data.timerSeconds ?? null
 
   // Per-round countdown timer; waits for the ready-up countdown on session start
   useEffect(() => {
-    if (isStarting) return
+    if (isStarting || roundTimeLimit === null) return
     let initialTime = roundTimeLimit
     if (
       savedSession &&
@@ -317,7 +317,7 @@ export function WildPrediction({
     roundStartRef.current = Date.now()
     if (initialTime <= 0) {
       totalErrorsRef.current++
-      responseMsRef.current.push(roundTimeLimit * 1000)
+      responseMsRef.current.push((roundTimeLimit ?? 0) * 1000)
       advanceRound(false)
       return
     }
@@ -404,7 +404,7 @@ export function WildPrediction({
     if (timeLeft === 0) {
       // Time up - count as incorrect, advance
       totalErrorsRef.current++
-      responseMsRef.current.push(roundTimeLimit * 1000)
+      responseMsRef.current.push((roundTimeLimit ?? 0) * 1000)
       advanceRound(false)
     }
   }, [timeLeft, isStarting, feedback, play, roundTimeLimit, advanceRound])
@@ -452,16 +452,35 @@ export function WildPrediction({
         <span>
           Round {roundIndex + 1} of {data.rounds.length}
         </span>
-        {timeLeft !== null && (
+      </div>
+
+      {/* Responsive Decaying Timer Bar */}
+      {timeLeft !== null && roundTimeLimit !== null && (
+        <div className="flex items-center gap-2.5 w-full">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-subtle">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                timeLeft <= 3 ? 'bg-status-fail' : 'bg-accent-cipher'
+              }`}
+              style={{ width: `${(timeLeft / roundTimeLimit) * 100}%` }}
+              role="progressbar"
+              aria-valuenow={timeLeft}
+              aria-valuemin={0}
+              aria-valuemax={roundTimeLimit}
+              aria-label="Round time remaining"
+            />
+          </div>
           <span
-            className={`font-mono font-bold ${timeLeft <= 3 ? 'text-status-fail' : 'text-text-primary'}`}
-            aria-live="polite"
-            aria-label={`${timeLeft} seconds remaining`}
+            className={`font-mono text-xs font-bold w-7 text-right shrink-0 ${
+              timeLeft <= 3
+                ? 'text-status-fail animate-pulse'
+                : 'text-text-primary'
+            }`}
           >
             {timeLeft}s
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Puzzle surface */}
       <div className="relative w-full rounded-xl border border-border-subtle bg-surface-panel p-4">
