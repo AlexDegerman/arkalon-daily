@@ -116,9 +116,19 @@ describe('validator', () => {
     clueType: ClueTypeId
     depositPattern?: CrystalMineData['depositPattern']
   }): PuzzleSeedData {
+    const rowCounts = Array.from(
+      { length: options.gridSize },
+      (_, r) => options.grid[r].filter((c) => c.isDeposit).length
+    )
+    const colCounts = Array.from({ length: options.gridSize }, (_, c) =>
+      options.grid.reduce((sum, row) => sum + (row[c]?.isDeposit ? 1 : 0), 0)
+    )
+
     const fam: CrystalMineData = {
       gridSize: options.gridSize,
       grid: options.grid,
+      rowCounts,
+      colCounts,
       depositCount: options.depositCount,
       chargeLimit: options.chargeLimit,
       clueType: options.clueType,
