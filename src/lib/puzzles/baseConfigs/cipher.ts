@@ -22,7 +22,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['tri_variable'],
     stepsShown: 6,
     choiceCount: 4,
-    timerSeconds: 10,
+    timerSeconds: 15,
     roundCount: 8
   },
   {
@@ -36,7 +36,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['alternating', 'tri_variable'],
     stepsShown: 6,
     choiceCount: 5,
-    timerSeconds: 10,
+    timerSeconds: 15,
     roundCount: 9
   },
   {
@@ -50,7 +50,7 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['constrained_choice'],
     stepsShown: 0,
     choiceCount: 4,
-    timerSeconds: 10,
+    timerSeconds: 16,
     roundCount: 8
   },
   {
@@ -71,21 +71,21 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['tri_variable'],
     stepsShown: 6,
     choiceCount: 5,
-    timerSeconds: 9,
+    timerSeconds: 14,
     roundCount: 8
   },
   {
     generators: ['alternating', 'constrained_choice'],
     stepsShown: 4,
     choiceCount: 4,
-    timerSeconds: 10,
+    timerSeconds: 16,
     roundCount: 10
   },
   {
     generators: ['tri_variable', 'constrained_choice'],
     stepsShown: 6,
     choiceCount: 5,
-    timerSeconds: 10,
+    timerSeconds: 16,
     roundCount: 9
   },
   {
@@ -99,21 +99,21 @@ export const CIPHER_BASE_CONFIGS: CipherBaseConfig[] = [
     generators: ['dual_variable', 'constrained_choice'],
     stepsShown: 5,
     choiceCount: 5,
-    timerSeconds: 9,
+    timerSeconds: 14,
     roundCount: 10
   },
   {
     generators: ['dual_variable', 'tri_variable'],
     stepsShown: 6,
     choiceCount: 6,
-    timerSeconds: 10,
+    timerSeconds: 16,
     roundCount: 8
   },
   {
     generators: ['rule_discovery', 'constrained_choice', 'dual_variable'],
     stepsShown: 4,
     choiceCount: 6,
-    timerSeconds: 8,
+    timerSeconds: 14,
     roundCount: 12
   }
 ]
