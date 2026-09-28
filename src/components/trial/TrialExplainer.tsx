@@ -11,41 +11,58 @@ interface ExplainerScreen {
 const EXPLAINER_SCREENS: Record<PuzzleCategory, ExplainerScreen[]> = {
   recall: [
     {
-      text: 'Watch the sequence of glyphs light up, then reproduce it from memory.'
+      text: 'Memorize the glyph sequence as each symbol illuminates across the runic pool. Remember the order before the display window expires.'
     },
     {
-      text: 'Three rounds, each longer than the last. Accuracy and speed are scored.'
+      text: 'Reproduce the sequence before the time gauge drains. Accuracy and input speed both affect your final score.'
+    },
+    {
+      text: 'Complete three rounds with increasing sequence length. Daily challenges may introduce reverse entry or scrambled keypad layouts.'
     }
   ],
   surge: [
     {
-      text: 'Tap the glowing nodes before they vanish. Avoid red decoy nodes.'
+      text: 'Tap glowing energy nodes before they fade away. You can also aim and tap using Space, Z, or X keys.'
     },
     {
-      text: 'Speed and accuracy both count. The pace increases over 60 seconds.'
+      text: 'Chain consecutive hits together to build combo multipliers and increase your score bonus up to 1.5x as the tempo rises.'
+    },
+    {
+      text: 'Avoid red decoy nodes. Hitting one reduces your score and resets your active combo.'
     }
   ],
   cipher: [
-    { text: 'Study the sequence and find the hidden pattern.' },
     {
-      text: 'Select the correct next element. Multiple rounds with increasing complexity.'
+      text: 'Study the card sequences or rule discovery panels to uncover the hidden pattern behind each puzzle.'
+    },
+    {
+      text: 'Choose the correct match before the round timer runs out. Accuracy and efficient solving determine your score.'
+    },
+    {
+      text: 'Daily challenges rotate through sequence patterns, YES/NO rule discovery, and multi-constraint elimination puzzles.'
     }
   ],
   strike: [
     {
-      text: "Watch the reticle move. Press FIRE when it's centered on the target."
+      text: 'Watch the reticle move across the lane. Press FIRE, Space, or Enter when it reaches the target zone.'
     },
-    { text: 'Shots are graded: Perfect, Excellent, Good, Early/Late, or Miss.' }
+    {
+      text: 'Your timing is graded by accuracy. Hit the center for Perfect, or earn lower grades based on your distance from the target.'
+    },
+    {
+      text: 'Daily challenges introduce different motion patterns including sine waves, pendulum sweeps, erratic movement, and deceptive feints.'
+    }
   ],
   depths: [
-    { text: 'Hidden crystals are buried in the grid.' },
     {
-      text: 'Clue tiles hint at the nearest crystal - numbers, arrows, heat or counts. Use them to deduce locations.'
+      text: 'Hidden crystals are buried throughout the grid. Use your limited charge budget to locate every deposit.'
     },
     {
-      text: 'Right-click or press and hold a tile to mark it as a suspected crystal without spending a charge.'
+      text: 'Numbers along the top and left borders reveal crystal counts for each row and column. Use them to eliminate impossible locations.'
     },
-    { text: 'You have limited charges \u00b7 excavate wisely.' }
+    {
+      text: 'Sensor clues and Sonar pings reveal distance, direction, or heat signals. Right-click or hold a tile to mark it.'
+    }
   ]
 }
 
