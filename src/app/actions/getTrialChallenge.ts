@@ -41,7 +41,12 @@ export async function getTrialChallenge(
 
   const family = getFamilyForCategory(category)
   const trialSeed = TRIAL_SEEDS[category]
-  let seedData = generateWithValidation(trialSeed, family)
+  let seedData: PuzzleSeedData
+  try {
+    seedData = generateWithValidation(trialSeed, family)
+  } catch {
+    return { success: false, error: 'Could not generate trial puzzle' }
+  }
   let attempt = 0
 
   // Each category enforces trial-specific constraints. Trials introduce the
@@ -121,8 +126,12 @@ export async function getTrialChallenge(
 
     attempt++
     // Derive deterministic trial variants while keeping the same seed format.
-    const derived = attempt.toString(16).padStart(2, '0') + trialSeed.slice(2)
-    seedData = generateWithValidation(derived, family)
+    try {
+      const derived = attempt.toString(16).padStart(2, '0') + trialSeed.slice(2)
+      seedData = generateWithValidation(derived, family)
+    } catch {
+      break
+    }
   }
 
   return { success: true, seedData }
