@@ -143,21 +143,23 @@ export function ArkalonNetworkWidget({
   // Collapsed State: Logo Only (Floating in corner with discovery or alert pip)
   if (collapsed) {
     return (
-      <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40">
-        <button
-          type="button"
-          onClick={toggleCollapse}
-          title="Open Arkalon Network Menu"
-          aria-label="Open Arkalon Network Menu"
-          className="relative flex items-center justify-center w-10 h-10 rounded-full border border-border-subtle bg-surface-panel/95 text-text-muted hover:text-text-primary hover:border-accent-recall transition-all shadow-2xl active:scale-95 cursor-pointer backdrop-blur-md"
-        >
-          <ArkalonEmblem size={20} theme={theme} />
-          {showNotificationPip && (
-            <span
-              className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full ${pipColor} border-2 border-[#0c111a] animate-pulse`}
-            />
-          )}
-        </button>
+      <div className="fixed bottom-3 inset-x-0 sm:bottom-4 z-40 pointer-events-none px-3 sm:px-4">
+        <div className="mx-auto w-full max-w-lg lg:max-w-5xl xl:max-w-6xl flex justify-end">
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            title="Open Arkalon Network Menu"
+            aria-label="Open Arkalon Network Menu"
+            className="pointer-events-auto relative flex items-center justify-center w-10 h-10 rounded-full border border-border-subtle bg-surface-panel/95 text-text-muted hover:text-text-primary hover:border-accent-recall transition-all shadow-2xl active:scale-95 cursor-pointer backdrop-blur-md"
+          >
+            <ArkalonEmblem size={20} theme={theme} />
+            {showNotificationPip && (
+              <span
+                className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full ${pipColor} border-2 border-[#0c111a] animate-pulse`}
+              />
+            )}
+          </button>
+        </div>
       </div>
     )
   }
@@ -172,72 +174,76 @@ export function ArkalonNetworkWidget({
         aria-hidden="true"
       />
 
-      <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 w-[calc(100vw-24px)] max-w-64 rounded-xl border border-border-subtle bg-[#0c111a] p-3 flex flex-col gap-2 shadow-[0_0_25px_rgba(0,0,0,0.85)] animate-[fade-in_0.15s_ease-out_both]">
-        {/* Widget Header with Arkalon Logo and Collapse Button */}
-        <div className="flex items-center justify-between border-b border-border-subtle/60 pb-2">
-          <div className="flex items-center gap-2">
-            <ArkalonEmblem size={22} theme={theme} />
-            <div className="flex flex-col">
-              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-text-primary leading-none">
-                ARKALON NETWORK
-              </span>
-              <span className="text-[8px] text-text-muted font-mono leading-tight">
-                ECOSYSTEM PORTAL
-              </span>
+      <div className="fixed bottom-3 inset-x-0 sm:bottom-4 z-40 pointer-events-none px-3 sm:px-4">
+        <div className="mx-auto w-full max-w-lg lg:max-w-5xl xl:max-w-6xl flex justify-end">
+          <div className="pointer-events-auto w-[calc(100vw-24px)] max-w-64 rounded-xl border border-border-subtle bg-[#0c111a] p-3 flex flex-col gap-2 shadow-[0_0_25px_rgba(0,0,0,0.85)] animate-[fade-in_0.15s_ease-out_both]">
+            {/* Widget Header with Arkalon Logo and Collapse Button */}
+            <div className="flex items-center justify-between border-b border-border-subtle/60 pb-2">
+              <div className="flex items-center gap-2">
+                <ArkalonEmblem size={22} theme={theme} />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-mono font-black uppercase tracking-widest text-text-primary leading-none">
+                    ARKALON NETWORK
+                  </span>
+                  <span className="text-[8px] text-text-muted font-mono leading-tight">
+                    ECOSYSTEM PORTAL
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                title="Collapse to logo only"
+                aria-label="Collapse to logo only"
+                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-base transition-colors cursor-pointer"
+              >
+                <ChevronDown size={14} />
+              </button>
+            </div>
+
+            {/* 3 Rows of Links under the logo pointing to network.rpsleague.fi */}
+            <div className="flex flex-col divide-y divide-border-subtle/40">
+              {NETWORK_LINKS.map(({ label, href, icon: Icon }) => {
+                const isOtherGames = label === 'Other Arkalon Games'
+                return (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={isOtherGames ? handleOtherGamesClick : undefined}
+                    className="flex items-center justify-between py-1.5 px-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-base/60 transition-colors group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon
+                        size={12}
+                        className="text-text-muted group-hover:text-accent-recall transition-colors shrink-0"
+                      />
+                      <span className="text-[11px] font-medium tracking-wide truncate">
+                        {label}
+                      </span>
+                      {isOtherGames && activeAlert && (
+                        <span
+                          className={`shrink-0 text-[8px] font-mono font-black uppercase px-1.5 py-0.2 rounded border leading-tight ${
+                            isUpdated
+                              ? 'bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]/40'
+                              : 'bg-accent-recall/20 text-accent-recall border-accent-recall/30'
+                          }`}
+                        >
+                          {isUpdated ? 'UPDATED' : 'NEW'}
+                        </span>
+                      )}
+                    </div>
+                    <ExternalLink
+                      size={11}
+                      className="text-text-muted opacity-70 group-hover:opacity-100 transition-opacity shrink-0 ml-1"
+                    />
+                  </a>
+                )
+              })}
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={toggleCollapse}
-            title="Collapse to logo only"
-            aria-label="Collapse to logo only"
-            className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-base transition-colors cursor-pointer"
-          >
-            <ChevronDown size={14} />
-          </button>
-        </div>
-
-        {/* 3 Rows of Links under the logo pointing to network.rpsleague.fi */}
-        <div className="flex flex-col divide-y divide-border-subtle/40">
-          {NETWORK_LINKS.map(({ label, href, icon: Icon }) => {
-            const isOtherGames = label === 'Other Arkalon Games'
-            return (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={isOtherGames ? handleOtherGamesClick : undefined}
-                className="flex items-center justify-between py-1.5 px-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-base/60 transition-colors group"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Icon
-                    size={12}
-                    className="text-text-muted group-hover:text-accent-recall transition-colors shrink-0"
-                  />
-                  <span className="text-[11px] font-medium tracking-wide truncate">
-                    {label}
-                  </span>
-                  {isOtherGames && activeAlert && (
-                    <span
-                      className={`shrink-0 text-[8px] font-mono font-black uppercase px-1.5 py-0.2 rounded border leading-tight ${
-                        isUpdated
-                          ? 'bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]/40'
-                          : 'bg-accent-recall/20 text-accent-recall border-accent-recall/30'
-                      }`}
-                    >
-                      {isUpdated ? 'UPDATED' : 'NEW'}
-                    </span>
-                  )}
-                </div>
-                <ExternalLink
-                  size={11}
-                  className="text-text-muted opacity-70 group-hover:opacity-100 transition-opacity shrink-0 ml-1"
-                />
-              </a>
-            )
-          })}
         </div>
       </div>
     </>

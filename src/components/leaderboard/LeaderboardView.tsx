@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { LeaderboardRow } from './LeaderboardRow'
 import { getLeaderboard } from '@/app/actions/getLeaderboard'
@@ -41,25 +41,42 @@ export function LeaderboardView({ initialResult }: LeaderboardViewProps) {
     initialResult ?? null
   )
   const [loading, setLoading] = useState(false)
-
-  const loadLeaderboard = useCallback(
-    async (category: LeaderboardScope, period: LeaderboardPeriod) => {
-      const playerId = getPlayerId()
-      setLoading(true)
-      const res = await getLeaderboard(playerId, category, period)
-      setResult(res)
-      setLoading(false)
-    },
-    []
-  )
+  const isFirstRender = useRef(true)
 
   useEffect(() => {
     // Skip initial fetch if pre-rendered from server props
-    if (initialResult && activeCategory === 'recall' && period === 'daily') {
+    if (
+      isFirstRender.current &&
+      initialResult &&
+      activeCategory === 'recall' &&
+      period === 'daily'
+    ) {
+      isFirstRender.current = false
       return
     }
-    loadLeaderboard(activeCategory, period)
-  }, [activeCategory, period, loadLeaderboard, initialResult])
+    isFirstRender.current = false
+
+    let cancelled = false
+    setLoading(true)
+
+    const playerId = getPlayerId()
+    getLeaderboard(playerId, activeCategory, period)
+      .then((res) => {
+        if (!cancelled) {
+          setResult(res)
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeCategory, period, initialResult])
 
   const cat =
     activeCategory === 'total' ? TOTAL_TAB : CATEGORIES[activeCategory]
@@ -269,7 +286,7 @@ export function LeaderboardView({ initialResult }: LeaderboardViewProps) {
                 <strong className="text-text-primary">
                   {result?.threshold}
                 </strong>{' '}
-                puzzles {periodNoun}.
+                {result?.threshold === 1 ? 'puzzle' : 'puzzles'} {periodNoun}.
               </p>
             </div>
             <Link

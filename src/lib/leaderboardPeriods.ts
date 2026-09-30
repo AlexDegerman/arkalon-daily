@@ -16,8 +16,8 @@ export const LEADERBOARD_THRESHOLDS: Record<
   Record<'category' | 'total', number>
 > = {
   daily: { category: 1, total: 1 },
-  weekly: { category: 3, total: 5 },
-  alltime: { category: 10, total: 25 }
+  weekly: { category: 1, total: 1 },
+  alltime: { category: 1, total: 1 }
 }
 
 // Monday 00:00 UTC of the ISO week containing `date`.
