@@ -403,12 +403,17 @@ async function getAggregateLeaderboard(
       boardEntries = cached.entries
       qualifiedCount = cached.qualifiedCount
     } else {
+      const orderBySql =
+        scope === 'total'
+          ? 'ORDER BY a.total_points DESC, a.avg_score DESC, a.clears DESC'
+          : 'ORDER BY a.avg_score DESC, a.clears DESC, a.best_score DESC'
+
       const boardRows = await client.query<AggregateRow>(
         `${aggCte}
           SELECT a.*, p.short_id, p.display_name
           FROM agg a
           JOIN players p ON p.id = a.player_id
-          ORDER BY a.avg_score DESC, a.clears DESC, a.best_score DESC
+          ${orderBySql}
           LIMIT 50`,
         params
       )
@@ -481,15 +486,28 @@ async function getAggregateLeaderboard(
       if (playerQualified) {
         const avg = parseFloat(pa?.avg_score ?? '0')
         const best = pa?.best_score ?? 0
+        const totalPoints = parseInt(pa?.total_points ?? '0', 10)
         // Rank against the qualified field using the board's sort order
+        const rankWhereSql =
+          scope === 'total'
+            ? `WHERE a.total_points > $${minParam + 1}
+                OR (a.total_points = $${minParam + 1} AND a.avg_score > $${minParam + 2})
+                OR (a.total_points = $${minParam + 1} AND a.avg_score = $${minParam + 2} AND a.clears > $${minParam + 3})`
+            : `WHERE a.avg_score > $${minParam + 1}
+                OR (a.avg_score = $${minParam + 1} AND a.clears > $${minParam + 2})
+                OR (a.avg_score = $${minParam + 1} AND a.clears = $${minParam + 2} AND a.best_score > $${minParam + 3})`
+
+        const rankParams =
+          scope === 'total'
+            ? [...params, totalPoints, avg, clears]
+            : [...params, avg, clears, best]
+
         const rankRow = await client.query<{ rank: string }>(
           `${aggCte}
             SELECT COUNT(*) + 1 AS rank
             FROM agg a
-            WHERE a.avg_score > $${minParam + 1}
-              OR (a.avg_score = $${minParam + 1} AND a.clears > $${minParam + 2})
-              OR (a.avg_score = $${minParam + 1} AND a.clears = $${minParam + 2} AND a.best_score > $${minParam + 3})`,
-          [...params, avg, clears, best]
+            ${rankWhereSql}`,
+          rankParams
         )
         playerRank = parseInt(rankRow.rows[0]?.rank ?? '1', 10)
         const streakMap = await fetchStreakMap(client, [validPlayerId], scope)
