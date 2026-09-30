@@ -18,10 +18,10 @@ describe('LEADERBOARD_THRESHOLDS', () => {
   it('defines minimum attempt thresholds for all periods and scopes', () => {
     expect(LEADERBOARD_THRESHOLDS.daily.category).toBe(1)
     expect(LEADERBOARD_THRESHOLDS.daily.total).toBe(1)
-    expect(LEADERBOARD_THRESHOLDS.weekly.category).toBe(3)
-    expect(LEADERBOARD_THRESHOLDS.weekly.total).toBe(5)
-    expect(LEADERBOARD_THRESHOLDS.alltime.category).toBe(10)
-    expect(LEADERBOARD_THRESHOLDS.alltime.total).toBe(25)
+    expect(LEADERBOARD_THRESHOLDS.weekly.category).toBe(1)
+    expect(LEADERBOARD_THRESHOLDS.weekly.total).toBe(1)
+    expect(LEADERBOARD_THRESHOLDS.alltime.category).toBe(1)
+    expect(LEADERBOARD_THRESHOLDS.alltime.total).toBe(1)
   })
 })
 
