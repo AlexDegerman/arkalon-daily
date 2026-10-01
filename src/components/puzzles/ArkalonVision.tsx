@@ -14,7 +14,7 @@ import { StartCountdownOverlay } from '@/components/layout/StartCountdownOverlay
 type RoundPhase = 'countdown' | 'display' | 'input' | 'feedback'
 
 function getRoundTimeLimitSec(sequenceLength: number): number {
-  return Math.round(Math.max(18, (6 + sequenceLength * 2) * 1.5))
+  return Math.round(Math.max(14, (6 + sequenceLength * 2) * 1.125))
 }
 
 interface RoundState {

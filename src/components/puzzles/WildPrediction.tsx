@@ -131,8 +131,8 @@ function ElementCard({
       aria-label={`${element.size} ${element.color} ${element.shape}`}
       aria-pressed={selected}
       className={[
-        'flex flex-col items-center justify-center gap-1 rounded-xl border-2 p-3 transition-colors',
-        'focus-visible:outline-2 focus-visible:outline-accent-cipher',
+        'flex flex-col items-center justify-center gap-1 rounded-xl border-2 p-1.5 sm:p-3 transition-colors cursor-pointer',
+        'focus-visible:outline-2 focus-visible:outline-accent-cipher active:scale-95',
         borderClass,
         disabled ? 'cursor-default opacity-60' : 'hover:border-accent-cipher/60'
       ].join(' ')}
@@ -142,7 +142,9 @@ function ElementCard({
         color={element.color}
         size={element.size}
       />
-      <span className="text-xs text-text-muted capitalize">{element.size}</span>
+      <span className="text-[10px] sm:text-xs text-text-muted capitalize">
+        {element.size}
+      </span>
     </button>
   )
 }
@@ -227,17 +229,21 @@ function RoundDisplay({ round }: { round: CipherRound }) {
       <p className="text-xs uppercase tracking-wider text-text-muted">
         What comes next?
       </p>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
         {round.shownElements.map((el, i) => (
-          <div key={i} className="flex items-center gap-1">
+          <div key={i} className="flex items-center gap-1 shrink-0">
             <ShapeIcon shape={el.shape} color={el.color} size={el.size} />
             {i < round.shownElements.length - 1 && (
-              <span className="text-text-muted">&rarr;</span>
+              <span className="text-text-muted text-xs sm:text-sm">&rarr;</span>
             )}
           </div>
         ))}
-        <span className="ml-1 text-text-muted">&rarr;</span>
-        <span className="font-mono text-lg text-text-muted">?</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-text-muted text-xs sm:text-sm">&rarr;</span>
+          <span className="font-mono text-base sm:text-lg text-text-muted font-bold">
+            ?
+          </span>
+        </div>
       </div>
     </div>
   )

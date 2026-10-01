@@ -674,24 +674,31 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
       </div>
 
       {/* Controls hint */}
-      <div className="relative flex items-center justify-between text-xs text-text-muted">
-        <span className="text-[11px] truncate max-w-[55%]">
-          Tap nodes (or Space / Z / X) &middot; avoid red decoys
+      <div className="relative flex items-center justify-between text-xs text-text-muted font-mono">
+        {/* Left: Input hint */}
+        <span className="text-[10px] sm:text-[11px] text-text-muted">
+          <span className="hidden sm:inline">
+            Tap nodes (or Space / Z / X) &middot; avoid red decoys
+          </span>
+          <span className="sm:hidden">Tap nodes</span>
         </span>
 
+        {/* Centered pause dock */}
         <div className="absolute left-1/2 -translate-x-1/2">
           <button
             onClick={() => setIsPaused(true)}
             aria-label="Pause game"
-            className="flex items-center gap-1 rounded border border-border-subtle bg-surface-panel/80 px-2.5 py-1 text-[11px] font-mono hover:border-accent-recall transition-colors cursor-pointer"
+            className="flex items-center gap-1 rounded border border-border-subtle bg-surface-panel/90 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-[11px] hover:border-accent-recall transition-colors cursor-pointer"
           >
             <span>{'\u23F8'}</span>
             <span>Pause</span>
           </button>
         </div>
 
-        <span className="text-[10px] text-text-muted/60 font-mono hidden sm:inline">
-          Esc to pause
+        {/* Right: Escape hint / Decoy reminder */}
+        <span className="text-[10px] text-text-muted/60">
+          <span className="hidden sm:inline">Esc to pause</span>
+          <span className="sm:hidden text-status-fail/80">Avoid decoys</span>
         </span>
       </div>
     </div>
