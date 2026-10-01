@@ -109,6 +109,7 @@ export function ArkalonVision({
   )
   const roundStateRef = useRef<RoundState>(roundState)
   roundStateRef.current = roundState
+  const timeoutHandledRef = useRef(false)
 
   // Persist turn-based state to localStorage on each meaningful change
   useEffect(() => {
@@ -140,6 +141,7 @@ export function ArkalonVision({
   ])
 
   const handleDisplayComplete = useCallback(() => {
+    timeoutHandledRef.current = false
     const nextSeqLen = currentRound?.sequence.length ?? 5
     const limit = getRoundTimeLimitSec(nextSeqLen)
     setTimeLeft(limit)
@@ -161,9 +163,11 @@ export function ArkalonVision({
 
   // Handle timeout expiration with partial credit logging
   const handleTimeout = useCallback(() => {
+    if (timeoutHandledRef.current) return
     const state = roundStateRef.current
     if (!currentRound || state.phase !== 'input') return
-    play('incorrect')
+    timeoutHandledRef.current = true
+
     const sequence = data.reverseEntry
       ? [...currentRound.sequence].reverse()
       : currentRound.sequence
@@ -181,8 +185,6 @@ export function ArkalonVision({
       errors
     })
 
-    play('round-complete')
-
     setRoundState((prev) => ({
       ...prev,
       phase: 'feedback',
@@ -193,6 +195,7 @@ export function ArkalonVision({
     setTimeout(() => {
       const nextRoundIndex = state.roundIndex + 1
       if (nextRoundIndex < data.rounds.length) {
+        timeoutHandledRef.current = false
         setRoundState({
           roundIndex: nextRoundIndex,
           phase: 'countdown',
@@ -213,7 +216,7 @@ export function ArkalonVision({
         })
       }
     }, 1000)
-  }, [currentRound, data.reverseEntry, data.rounds.length, play, onComplete])
+  }, [currentRound, data.reverseEntry, data.rounds.length, onComplete])
 
   // Continuous countdown timer: runs independently of button presses
   useEffect(() => {
@@ -242,14 +245,7 @@ export function ArkalonVision({
     }
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval)
-          handleTimeout()
-          return 0
-        }
-        return prev - 1
-      })
+      setTimeLeft((prev) => Math.max(0, prev - 1))
     }, 1000)
 
     return () => clearInterval(interval)
@@ -260,6 +256,12 @@ export function ArkalonVision({
     handleTimeout,
     savedSession
   ])
+
+  useEffect(() => {
+    if (roundState.phase === 'input' && timeLeft === 0) {
+      handleTimeout()
+    }
+  }, [timeLeft, roundState.phase, handleTimeout])
 
   const handleGlyphPress = useCallback(
     (glyph: string) => {
@@ -350,7 +352,7 @@ export function ArkalonVision({
     : currentRound.sequence
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-3 sm:gap-4">
       {isTrial && <TrialBanner />}
 
       {/* Round progress */}

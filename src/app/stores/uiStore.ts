@@ -27,7 +27,7 @@ export const useUiStore = create<UiState>()((set) => ({
   arkalonTTSEnabled: true,
   arkalonVolume: 0.5,
   sfxEnabled: true,
-  sfxVolume: 0.72,
+  sfxVolume: 0.6,
   musicEnabled: true,
   musicVolume: 0.3,
   setShowWelcomeModal: (open) => set({ showWelcomeModal: open }),
