@@ -61,7 +61,7 @@ const EXPLAINER_SCREENS: Record<PuzzleCategory, ExplainerScreen[]> = {
       text: 'The numbers along the top and left borders indicate the exact crystal count for that entire row or column. For example, a "0" means every tile in that line is empty.'
     },
     {
-      text: 'Pre-revealed clues give proximity signals (distance, arrows, or neighbor counts). Marking with flags (🚩) is completely optional, it is a free utility tool to help you track suspected crystals (you must still dig to collect them). Digging an empty tile pings its exact distance.'
+      text: 'Pre-revealed clues give proximity signals (distance, arrows, or neighbor counts). Crossing out tiles (✖) is completely optional—it is a free deduction tool to mark tiles you know are empty. Digging an empty tile pings its exact distance.'
     }
   ]
 }

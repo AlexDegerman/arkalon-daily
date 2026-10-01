@@ -67,7 +67,7 @@ Each category maps to a registered puzzle family via a one-entry family registry
 ---
 
 ### Recall
-Watch glyph sequences light up across a 16-symbol runic pool (`◆`, `▲`, `●`, `■`, `★`, `◇`, `▼`, `○`, `⬡`, `✦`, `⬢`, `△`, `◈`, `⊕`, `▣`, `✧`), then reproduce them from memory across three escalating rounds. Features procedural sequences with zero adjacent duplicate symbols, a dynamic input time bank ($T = \max(12, 6 + 2N)\text{ seconds}$) with a decaying visual meter, audio urgency ticks on the final 3 seconds, partial credit scoring on timeout, and per-round countdown overlays with reverse-entry warnings.
+Watch glyph sequences light up across a 16-symbol runic pool (`◆`, `▲`, `●`, `■`, `★`, `◇`, `▼`, `○`, `⬡`, `✦`, `⬢`, `△`, `◈`, `⊕`, `▣`, `✧`), then reproduce them from memory across three escalating rounds. Features procedural sequences with zero adjacent duplicate symbols, a compressed input time bank ($T = \max(14, (6 + 2N) \times 1.125)\text{ seconds}$) with a decaying visual meter, audio urgency ticks on the final 3 seconds, red missed-rune sequence reveals on timeout, symmetrical keypad matrices ($5 \times 2$, $4 \times 4$), and per-round countdown overlays with reverse-entry warnings.
 
 <p align="center">
   <strong>Recall in Action</strong><br/>
@@ -188,7 +188,7 @@ Fire when a moving reticle crosses the target window on a 600-unit logical track
 ---
 
 ### Depths
-A pure, untimed spatial deduction puzzle built on the Seismic Matrix system. Features outer row and column crystal counters (nonogram style) paired with inner proximity clues, allowing 100% deterministic, zero-guess solutions. Excavating empty tiles pings Active Sonar distance data directly from the excavated cell to turn misses into new triangulation points. Includes tile flagging (`🚩`) via Right-Click, 450ms long press, or the Mark/Dig toggle button. When charges deplete with crystals still buried, an auto-scan sequence reveals all remaining hidden crystals in dashed grayscale with staggered animations so the player sees the full solution without altering their final score.
+A pure, untimed spatial deduction puzzle built on the Seismic Matrix system. Features outer row and column crystal counters (nonogram style) paired with inner proximity clues, allowing 100% deterministic, zero-guess solutions. Excavating empty tiles pings Active Sonar distance data directly from the excavated cell to turn misses into new triangulation points. Includes tile elimination crosses (`✖`) to mark suspected empty tiles via Right-Click, 450ms long press, or the Dig/Cross toggle button. When charges deplete with crystals still buried, the excavation ends and an auto-scan sequence reveals all remaining hidden crystals in dashed grayscale with staggered animations so the player sees the full solution without altering their final score.
 
 <p align="center">
   <strong>Depths in Action</strong><br/>
@@ -268,15 +268,11 @@ First contact with each category opens a Trial: a multi-screen explainer followe
 ## Leaderboards & Yesterday's Review
 
 - **Daily Boards**: Top 50 per category ordered by score descending, then elapsed time ascending. Exact rank is computed for players outside the top 50. A daily family index displays alongside each entry.
-- **Weekly & All-Time Tiers**: Fully operational aggregate rankings gated by minimum-match thresholds:
-  * *Daily*: 1 match
-  * *Weekly*: 3 matches (category), 5 matches (total)
-  * *All-Time*: 10 matches (category), 25 matches (total)
+- **Weekly & All-Time Tiers**: Fully operational aggregate rankings with instant qualification:
+  * *Universal Qualification*: Clearing **1 puzzle** ($\text{score} \ge 15$) instantly ranks players across Daily, Weekly, and All-Time boards.
+  * *Category Boards*: Ordered primarily by Average Score (`AVG`), with clears and best score acting as tiebreakers.
+  * *TOTAL Scope*: The cross-category leaderboard orders primarily by **Total Points (`PTS`)**, rewarding players who show up daily and compete across all five disciplines. Surfacing per-category clear pips for each player row.
   * *Metrics Displayed*: Average score, clears count, best score, total points, and active streak days.
-  * *Provisional Status*: Players below the qualifying match threshold see a live progress bar tracking clears needed to unlock their ranked standing.
-- **TOTAL Scope**: A cross-category aggregate tier combining all five disciplines, surfacing per-category clear pips for each player row.
-- **Yesterday's Review**: Per-category community telemetry covering player count, average score, median, top-1% threshold, and a five-bucket score distribution, plus your rank and percentile if you played. Suppressed below a 25-player population minimum to avoid noise.
-- **Leaderboard Caching**: Player-agnostic board rows are cached server-side for 45 seconds to reduce database load under concurrent requests.
 
 ---
 

@@ -174,7 +174,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       if (newMarked.has(key)) newMarked.delete(key)
       else {
         newMarked.add(key)
-        play('mark-tile')
+        play('sequence-tick')
       }
       setMarked(newMarked)
     },
@@ -460,11 +460,11 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
           onClick={() => setIsMarking((m) => !m)}
           className={`px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
             isMarking
-              ? 'border-[#F59E0B] bg-[#F59E0B]/20 text-[#F59E0B]'
+              ? 'border-text-muted/60 bg-surface-hover text-text-primary'
               : 'border-border-subtle bg-surface-panel text-text-muted hover:text-text-primary'
           }`}
         >
-          {isMarking ? '🚩 Mark' : '⛏️ Dig'}
+          {isMarking ? '✖ Cross' : '⛏️ Dig'}
         </button>
 
         <span>
@@ -481,9 +481,8 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
 
       {/* Marking hint */}
       <p className="text-[11px] sm:text-xs text-text-muted">
-        Right-click or hold a tile to mark it instead of digging
+        Right-click or hold a tile to cross it out (✖) as empty
       </p>
-
       {autoRevealKeys.length > 0 && (
         <p
           className="text-center text-xs font-mono font-bold text-[#F59E0B]"
@@ -612,13 +611,17 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                 )
                 ariaLabel += ', excavated, empty'
               } else if (state === 'marked') {
-                bg = 'bg-[#F59E0B]/10 border-[#F59E0B]/40 cursor-pointer'
+                bg =
+                  'bg-surface-panel/40 border-border-subtle cursor-pointer hover:border-text-muted/60'
                 textContent = (
-                  <span className="text-sm" aria-hidden="true">
-                    🚩
+                  <span
+                    className="text-xs sm:text-sm text-text-muted font-bold select-none"
+                    aria-hidden="true"
+                  >
+                    ✖
                   </span>
                 )
-                ariaLabel += ', marked'
+                ariaLabel += ', crossed out as empty'
               } else {
                 ariaLabel += ', hidden'
               }
