@@ -29,6 +29,7 @@ export function CategoryCard({
   streakDays,
   yesterdayScore
 }: CategoryCardProps) {
+
   const router = useRouter()
   const cat = CATEGORIES[category]
 

@@ -10,7 +10,7 @@ import type { CategoryStatus } from '@/types/puzzle'
 
 const LOADING_STATUSES: CategoryStatus[] = CATEGORY_ORDER.map((slug) => ({
   category: slug,
-  status: 'trial',
+  status: 'available',
   streakDays: 0,
   trialCompleted: false
 }))

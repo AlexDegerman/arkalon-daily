@@ -384,14 +384,12 @@ export function SniperChallenge({
       const deviationPx = Math.abs(reticleX - currentShot.targetCenterX)
       const grade = getGrade(deviationPx, currentShot.targetWindowPx)
 
-      if (!autoMiss) {
-        if (grade === 'perfect') {
-          play('shot-perfect')
-        } else if (grade === 'miss') {
-          play('incorrect')
-        } else {
-          play('shot-basic')
-        }
+      if (autoMiss || grade === 'miss') {
+        play('incorrect')
+      } else if (grade === 'perfect') {
+        play('shot-perfect')
+      } else {
+        play('shot-basic')
       }
 
       resultsRef.current.push({
@@ -494,7 +492,7 @@ export function SniperChallenge({
   const targetWidth = currentShot.targetWindowPx * scale
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-155 flex-col gap-2.5 sm:gap-3.5">
       {isTrial && <TrialBanner />}
 
       {/* Shot counter */}
@@ -524,7 +522,7 @@ export function SniperChallenge({
       </div>
 
       {/* Track */}
-      <div className="relative w-full rounded-xl border border-border-subtle bg-surface-panel p-6">
+      <div className="relative w-full rounded-xl border border-border-subtle bg-surface-panel p-4 sm:p-6">
         <div
           ref={trackRef}
           className="relative mx-auto h-12 w-full overflow-visible rounded-sm bg-bg-base"
@@ -559,12 +557,12 @@ export function SniperChallenge({
         </div>
 
         {/* FIRE button - thumb zone on mobile */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-5 sm:mt-8 flex justify-center">
           <button
             onClick={() => handleFire()}
             disabled={isPaused || isStarting}
             aria-label="Fire"
-            className="min-h-16 min-w-40 rounded-xl border-2 border-accent-strike bg-accent-strike/10 px-8 py-4 font-mono text-lg font-bold tracking-widest text-accent-strike transition-colors hover:bg-accent-strike/20 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent-strike active:bg-accent-strike/30"
+            className="min-h-14 sm:min-h-16 min-w-36 sm:min-w-40 rounded-xl border-2 border-accent-strike bg-accent-strike/10 px-8 py-3.5 sm:py-4 font-mono text-base sm:text-lg font-bold tracking-widest text-accent-strike transition-colors hover:bg-accent-strike/20 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent-strike active:bg-accent-strike/30 cursor-pointer"
           >
             FIRE
           </button>
@@ -584,12 +582,17 @@ export function SniperChallenge({
         <PauseOverlay isPaused={isPaused} onResume={() => setIsPaused(false)} />
       </div>
 
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>Space or Enter to fire &middot; Escape to pause</span>
+      <div className="flex items-center justify-between text-xs text-text-muted font-mono">
+        <span className="text-[10px] sm:text-xs">
+          <span className="hidden sm:inline">
+            Space or Enter to fire &middot; Escape to pause
+          </span>
+          <span className="sm:hidden">Tap FIRE to strike</span>
+        </span>
         <button
           onClick={() => setIsPaused(true)}
           aria-label="Pause game"
-          className="rounded px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-accent-recall"
+          className="rounded border border-border-subtle bg-surface-panel/80 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs text-text-muted hover:text-text-primary hover:border-accent-recall transition-colors cursor-pointer"
         >
           {'\u23F8'} Pause
         </button>
