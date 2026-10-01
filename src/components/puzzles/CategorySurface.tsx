@@ -78,7 +78,7 @@ function resolveBriefing(
     if (clueType === 'directional') {
       return {
         modifierKey: key,
-        title: 'Compass Radar Active',
+        title: 'Directional',
         bullets: [
           'Clue tiles display arrows (→, ↘, ↓, ↙, etc.) pointing directly toward the nearest crystal.',
           'The numbers along the top and left edges indicate the total crystals in that line. Cross-reference them with arrow directions.'
@@ -88,7 +88,7 @@ function resolveBriefing(
     if (clueType === 'hot_cold') {
       return {
         modifierKey: key,
-        title: 'Thermal Radar Active',
+        title: 'Hot & Cold',
         bullets: [
           'Clue tiles display proximity: HOT (≤1 step), WARM (≤3 steps), or COLD (>3 steps).',
           'Use top and left border counts to eliminate empty rows and columns.'
@@ -98,7 +98,7 @@ function resolveBriefing(
     if (clueType === 'adjacency_count') {
       return {
         modifierKey: key,
-        title: 'Neighborhood Radar Active',
+        title: 'Adjacency Count',
         bullets: [
           'Clue tiles indicate the exact number of crystals in the 8 immediately surrounding cells.',
           'Outer border numbers indicate total crystals in that line.'
@@ -113,7 +113,7 @@ function resolveBriefing(
     if (fn === 'deceptive') {
       return {
         modifierKey: key,
-        title: 'Deceptive Kinematics',
+        title: 'Deceptive',
         bullets: [
           'The reticle will decelerate and briefly reverse backwards before bursting forward through the target.',
           'Anticipate the feint and hold fire until the reticle completes its reverse.'
@@ -123,7 +123,7 @@ function resolveBriefing(
     if (fn === 'staccato') {
       return {
         modifierKey: key,
-        title: 'Stepper Motor Motion',
+        title: 'Staccato',
         bullets: [
           'The reticle advances in rapid 250ms bursts separated by 150ms dead-stops.',
           'Time your shot as the reticle pauses or steps into the target zone.'
@@ -133,7 +133,7 @@ function resolveBriefing(
     if (fn === 'pendulum') {
       return {
         modifierKey: key,
-        title: 'Harmonic Gravity Sweep',
+        title: 'Pendulum',
         bullets: [
           'The reticle sweeps at peak velocity through the center and decelerates at the outer track edges.'
         ]
@@ -142,7 +142,7 @@ function resolveBriefing(
     if (fn === 'erratic') {
       return {
         modifierKey: key,
-        title: 'Erratic Frequency Flutter',
+        title: 'Erratic',
         bullets: [
           'High-frequency vibration waves create micro-jitters along the reticle trajectory.'
         ]
@@ -158,7 +158,7 @@ function resolveBriefing(
     if (isReverse && isShuffled) {
       return {
         modifierKey: 'recall:nightmare',
-        title: 'Scrambled Reverse Entry',
+        title: 'Nightmare',
         bullets: [
           'Enter the sequence in exact reverse order (last glyph seen back to first).',
           'Keypad symbols shuffle positions every round—visually scan for each glyph.'
@@ -168,7 +168,7 @@ function resolveBriefing(
     if (isReverse) {
       return {
         modifierKey: 'recall:reverse',
-        title: 'Reverse Sequence Entry',
+        title: 'Reverse',
         bullets: [
           'Enter the glyphs in reverse order (from the last symbol displayed back to the first).'
         ]
@@ -177,7 +177,7 @@ function resolveBriefing(
     if (isShuffled) {
       return {
         modifierKey: 'recall:shuffled',
-        title: 'Scrambled Keypad Matrix',
+        title: 'Shuffled',
         bullets: [
           'The keypad buttons shuffle positions every round to prevent muscle-memory shortcuts.'
         ]
@@ -204,7 +204,7 @@ function resolveBriefing(
     if (hasRuleDiscovery) {
       return {
         modifierKey: 'cipher:rule_discovery',
-        title: 'Inductive Rule Discovery',
+        title: 'Rule Discovery',
         bullets: [
           'Compare the YES and NO boxes to deduce the single governing rule (shape, color, size, or warm/cool tone).',
           'Choose the one shape that satisfies the rule.'
@@ -214,7 +214,7 @@ function resolveBriefing(
     if (hasConstrained) {
       return {
         modifierKey: 'cipher:constrained_choice',
-        title: 'Constraint Elimination',
+        title: 'Constrained Choice',
         bullets: [
           'Read all listed constraints. Distractor options are near-misses that break exactly one rule.',
           'Select the one shape that satisfies every constraint.'
@@ -224,7 +224,7 @@ function resolveBriefing(
     if (hasTriVariable) {
       return {
         modifierKey: 'cipher:tri_variable',
-        title: 'Tri-Variable Cycles',
+        title: 'Tri-Variable',
         bullets: [
           'Shapes, colors, and sizes cycle independently on out-of-sync loops.',
           'Isolate one attribute at a time to predict what comes next.'
@@ -234,7 +234,7 @@ function resolveBriefing(
     if (hasDualVariable) {
       return {
         modifierKey: 'cipher:dual_variable',
-        title: 'Dual-Variable Cycles',
+        title: 'Dual-Variable',
         bullets: [
           'Shapes and colors cycle on two separate alternating rhythms while size stays constant.',
           'Track both independent cycles to find the matching pair.'
@@ -258,42 +258,42 @@ function resolveBriefing(
           ]
         },
         spiral: {
-          title: 'Inward Spiral Vortex',
+          title: 'Spiral',
           bullets: [
             'Nodes spawn along a rotating golden-angle vortex swirling inward toward the center.',
             'Track the orbital rotation to anticipate where each subsequent node appears.'
           ]
         },
         wave: {
-          title: 'Sinusoidal Wave Flow',
+          title: 'Wave',
           bullets: [
             'Nodes spawn along an oscillating horizontal sine wave across the screen.',
             'Follow the rhythmic crests and troughs as the wave sweeps.'
           ]
         },
         lane_switch: {
-          title: 'Corridor Lane Switch',
+          title: 'Lane Switch',
           bullets: [
             'Nodes are locked to top, middle, and bottom tracks, jumping between dashed boundary rails.',
             'Shift focus vertically across the three corridor lanes.'
           ]
         },
         triple_burst: {
-          title: 'Triple Burst Cluster',
+          title: 'Triple Burst',
           bullets: [
             'Nodes spawn in simultaneous clusters of three with extended lifetimes.',
             'Quickly prioritize and clear all three targets in the cluster before they expire.'
           ]
         },
         paired: {
-          title: 'Symmetrical Paired Nodes',
+          title: 'Paired',
           bullets: [
             'Nodes spawn in simultaneous bilateral mirror pairs across the center.',
             'Triage both sides of the arena in rapid succession.'
           ]
         },
         center_out: {
-          title: 'Radial Shockwave',
+          title: 'Center Out',
           bullets: [
             'Nodes burst from the center outward toward the perimeter in expanding waves.',
             'Track the outward expansion to tap targets before they decay.'
@@ -881,13 +881,47 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
                         if (res.success && res.seedData && res.puzzleInfo) {
                           setSeedData(res.seedData)
                           setPuzzleInfo(res.puzzleInfo)
-                          if (arkalonTTSEnabled) {
-                            speakArkalon(
-                              TTS_LINES.categoryEntry[category],
-                              arkalonVolume
-                            )
+                          dailySeedRef.current = res.seedData
+
+                          const briefing = resolveBriefing(
+                            category,
+                            res.seedData
+                          )
+                          let alreadySeen = false
+                          if (briefing) {
+                            if (
+                              dismissedBriefingsRef.current.has(
+                                briefing.modifierKey
+                              )
+                            ) {
+                              alreadySeen = true
+                            } else {
+                              try {
+                                const rawSeen = localStorage.getItem(
+                                  'arkalon_seen_modifiers'
+                                )
+                                const seenList: string[] = rawSeen
+                                  ? JSON.parse(rawSeen)
+                                  : []
+                                alreadySeen = seenList.includes(
+                                  briefing.modifierKey
+                                )
+                              } catch {}
+                            }
                           }
-                          setPhase('playing')
+
+                          if (briefing && !alreadySeen) {
+                            setActiveBriefing(briefing)
+                            setPhase('briefing')
+                          } else {
+                            if (arkalonTTSEnabled) {
+                              speakArkalon(
+                                TTS_LINES.categoryEntry[category],
+                                arkalonVolume
+                              )
+                            }
+                            setPhase('playing')
+                          }
                         } else {
                           setErrorMsg(res.error ?? 'Failed to load challenge')
                           setPhase('error')
@@ -1017,7 +1051,7 @@ export function CategorySurface({ category }: CategorySurfaceProps) {
             : undefined
         }
       />
-      <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-2.5 sm:px-4 py-3 sm:py-4">
+      <main className="mx-auto flex w-full max-w-180 flex-1 flex-col px-2.5 sm:px-4 py-1.5 sm:py-4">
         {renderPuzzle()}
       </main>
     </div>

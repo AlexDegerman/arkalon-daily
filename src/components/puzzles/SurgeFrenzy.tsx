@@ -674,17 +674,25 @@ export function SurgeFrenzy({ data, isTrial, onComplete }: SurgeFrenzyProps) {
       </div>
 
       {/* Controls hint */}
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>
-          Tap glowing nodes (or Space / Z / X) &middot; avoid red decoys
+      <div className="relative flex items-center justify-between text-xs text-text-muted">
+        <span className="text-[11px] truncate max-w-[55%]">
+          Tap nodes (or Space / Z / X) &middot; avoid red decoys
         </span>
-        <button
-          onClick={() => setIsPaused(true)}
-          aria-label="Pause game"
-          className="rounded px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-accent-recall"
-        >
-          {'\u23F8'} Pause
-        </button>
+
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <button
+            onClick={() => setIsPaused(true)}
+            aria-label="Pause game"
+            className="flex items-center gap-1 rounded border border-border-subtle bg-surface-panel/80 px-2.5 py-1 text-[11px] font-mono hover:border-accent-recall transition-colors cursor-pointer"
+          >
+            <span>{'\u23F8'}</span>
+            <span>Pause</span>
+          </button>
+        </div>
+
+        <span className="text-[10px] text-text-muted/60 font-mono hidden sm:inline">
+          Esc to pause
+        </span>
       </div>
     </div>
   )

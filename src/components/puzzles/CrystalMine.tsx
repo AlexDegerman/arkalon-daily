@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { HelpCircle } from 'lucide-react'
 import { TrialBanner } from '@/components/trial/TrialBanner'
 import { useSound } from '@/hooks/useSound'
 import { computeClueValue } from '@/lib/puzzles/compositionSystem'
@@ -8,6 +9,30 @@ import type {
   CrystalMineData,
   GridCell
 } from '@/lib/puzzles/families/crystalMine'
+import type { ClueTypeId } from '@/types/puzzle'
+
+const CLUE_TYPE_INFO: Record<ClueTypeId, { name: string; detail: string }> = {
+  numeric: {
+    name: 'Numeric Distance',
+    detail:
+      'Numbers indicate Manhattan distance (|dr| + |dc|) to the closest crystal. Excavating an empty tile also pings its numeric distance.'
+  },
+  directional: {
+    name: 'Directional',
+    detail:
+      'Arrows (→, ↘, ↓, ↙, etc.) point in the 8 compass directions toward the closest crystal.'
+  },
+  hot_cold: {
+    name: 'Hot & Cold',
+    detail:
+      'Clues show distance bands: HOT = 1 step away, WARM = 2–3 steps away, COLD = 4+ steps away from a crystal.'
+  },
+  adjacency_count: {
+    name: 'Adjacency Count',
+    detail:
+      'Minesweeper-style: numbers indicate exactly how many crystals exist in the 8 immediately surrounding adjacent cells.'
+  }
+}
 
 export interface CrystalMineResult {
   depositsFound: number
@@ -319,56 +344,146 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
     ]
   )
 
+  const [showClueTooltip, setShowClueTooltip] = useState(false)
+  const [viewport, setViewport] = useState({ w: 600, h: 800 })
+  const clueTooltipRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const update = () => {
+      setViewport({ w: window.innerWidth, h: window.innerHeight })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  useEffect(() => {
+    if (!showClueTooltip) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        clueTooltipRef.current &&
+        !clueTooltipRef.current.contains(e.target as Node)
+      ) {
+        setShowClueTooltip(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showClueTooltip])
+
   const chargesRemaining = data.chargeLimit - chargesUsed
-  const maxGridContentWidth = 260
-  const cellSizePx = Math.min(
-    52,
-    Math.floor((maxGridContentWidth - data.gridSize * 4) / data.gridSize)
+
+  // Height safeguard: force compact scale whenever vertical space is under 650px
+  const isShortViewport = viewport.h < 650
+  const compactCap = data.gridSize >= 7 ? 35 : data.gridSize === 6 ? 42 : 48
+  const desktopCap = 58
+  const upperCap = isShortViewport ? compactCap : desktopCap
+
+  // Available height for grid after non-grid UI elements and margins
+  const availableGridHeight = Math.max(200, viewport.h - 220)
+  const maxCellByHeight =
+    Math.floor((availableGridHeight - 16) / data.gridSize) - 4
+
+  // Available width: clamp between mobile baseline (300px) and desktop max (380px)
+  const maxGridContentWidth = Math.min(380, Math.max(300, viewport.w - 32))
+  const maxCellByWidth = Math.floor(
+    (maxGridContentWidth - data.gridSize * 4) / data.gridSize
   )
 
+  const minCellFloor = data.gridSize >= 7 ? 34 : data.gridSize === 6 ? 38 : 44
+  const cellSizePx = Math.max(
+    minCellFloor,
+    Math.min(upperCap, maxCellByHeight, maxCellByWidth)
+  )
+
+  const isLargeBoard = cellSizePx >= 48
+  const rowHeaderWidth = isLargeBoard ? 32 : 24
+  const gridPadding = isLargeBoard ? 24 : 12
+  const gridTotalWidth =
+    rowHeaderWidth + data.gridSize * (cellSizePx + 4) + gridPadding + 4
+
+  const clueInfo = CLUE_TYPE_INFO[data.clueType] ?? {
+    name: data.clueType.replace('_', ' '),
+    detail: 'Use clue hints and row/column counts to deduce crystal locations.'
+  }
+
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div
+      className="mx-auto flex w-full flex-col gap-1.5 sm:gap-2.5"
+      style={{ maxWidth: `${gridTotalWidth}px` }}
+    >
       {isTrial && <TrialBanner />}
 
-      {/* Status bar */}
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <span>
-          {'\uD83D\uDD37'} {depositsFound}/{data.depositCount} found
-        </span>
+      {/* Streamlined Status bar with Interactive Clue Tooltip */}
+      <div className="flex items-center justify-between text-xs text-text-muted font-mono">
+        <div
+          className="relative flex items-center gap-1.5 sm:gap-2"
+          ref={clueTooltipRef}
+        >
+          <span className="text-text-primary font-bold">
+            {'\uD83D\uDD37'} {depositsFound}/{data.depositCount}
+          </span>
+          <span className="text-border-subtle">·</span>
+          <button
+            type="button"
+            onClick={() => setShowClueTooltip((v) => !v)}
+            onMouseEnter={() => setShowClueTooltip(true)}
+            onMouseLeave={() => setShowClueTooltip(false)}
+            aria-label="Clue type explanation"
+            className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle bg-surface-panel hover:border-accent-depths transition-colors cursor-pointer"
+          >
+            <span className="font-bold uppercase text-[10px] sm:text-[11px] text-accent-depths tracking-wide">
+              {clueInfo.name}
+            </span>
+            <HelpCircle
+              size={11}
+              className="text-text-muted group-hover:text-accent-depths transition-colors"
+            />
+          </button>
+
+          {showClueTooltip && (
+            <div className="absolute left-0 top-full mt-1.5 z-40 w-72 sm:w-80 p-3 rounded-lg border border-accent-depths/50 bg-[#0c111a] shadow-2xl text-xs text-text-primary animate-[fade-in_0.15s_ease-out_both]">
+              <p className="font-bold text-accent-depths font-mono mb-1">
+                {clueInfo.name}
+              </p>
+              <p className="leading-relaxed text-text-muted text-[11px] mb-2 font-sans">
+                {clueInfo.detail}
+              </p>
+              <p className="text-[10px] text-text-muted/80 border-t border-border-subtle/60 pt-1.5 font-mono">
+                Border numbers show total crystals in each row and column.
+              </p>
+            </div>
+          )}
+        </div>
+
         <button
           onClick={() => setIsMarking((m) => !m)}
-          className={`px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider transition-colors ${
+          className={`px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
             isMarking
               ? 'border-[#F59E0B] bg-[#F59E0B]/20 text-[#F59E0B]'
-              : 'border-border-subtle text-text-muted hover:text-text-primary'
+              : 'border-border-subtle bg-surface-panel text-text-muted hover:text-text-primary'
           }`}
         >
           {isMarking ? '🚩 Mark' : '⛏️ Dig'}
         </button>
+
         <span>
           Charges:{' '}
           <span
-            className={`font-mono font-bold ${
+            className={`font-bold ${
               chargesRemaining <= 2 ? 'text-status-fail' : 'text-text-primary'
             }`}
           >
             {chargesRemaining}
-          </span>{' '}
-          remaining
+          </span>
         </span>
       </div>
 
-      {/* Clue type label */}
-      <p className="text-xs text-text-muted">
-        Clue type:{' '}
-        <span className="font-semibold text-accent-depths capitalize">
-          {data.clueType.replace('_', ' ')}
-        </span>
-      </p>
       {/* Marking hint */}
-      <p className="text-xs text-text-muted">
+      <p className="text-[11px] sm:text-xs text-text-muted">
         Right-click or hold a tile to mark it instead of digging
       </p>
+
       {autoRevealKeys.length > 0 && (
         <p
           className="text-center text-xs font-mono font-bold text-[#F59E0B]"
@@ -381,7 +496,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
 
       {/* Seismic Matrix Grid with Outer Row & Column Counters */}
       <div
-        className={`mx-auto w-fit max-w-full rounded-xl border border-border-subtle bg-surface-panel p-2 sm:p-3${
+        className={`w-full rounded-xl border border-border-subtle bg-surface-panel p-1.5 sm:p-3${
           autoRevealKeys.length > 0 ? ' pointer-events-none' : ''
         }`}
         role="grid"
@@ -390,19 +505,19 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         aria-colcount={data.gridSize}
       >
         {/* Column Header Counters */}
-        <div className="flex items-center mb-1">
-          <div className="w-5 shrink-0" aria-hidden="true" />
+        <div className="flex items-center mb-0.5 sm:mb-1">
+          <div className="w-6 sm:w-8 shrink-0" aria-hidden="true" />
           {colCounts.map((count, ci) => (
             <div
               key={ci}
               style={{ width: cellSizePx }}
-              className="text-center font-mono text-[10px] font-black m-0.5"
+              className="text-center font-mono text-xs sm:text-base font-black m-0.5"
             >
               <span
                 className={
                   count > 0
-                    ? 'text-accent-depths font-bold'
-                    : 'text-text-muted/40'
+                    ? 'text-accent-depths drop-shadow-[0_0_8px_rgba(79,195,255,0.4)]'
+                    : 'text-text-muted/35'
                 }
               >
                 {count}
@@ -419,12 +534,12 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
             aria-rowindex={rowIdx + 1}
           >
             {/* Row Header Counter */}
-            <div className="w-5 shrink-0 text-right pr-1 font-mono text-[10px] font-black">
+            <div className="w-6 sm:w-8 shrink-0 text-right pr-1 sm:pr-2 font-mono text-xs sm:text-base font-black">
               <span
                 className={
                   rowCounts[rowIdx] > 0
-                    ? 'text-accent-depths font-bold'
-                    : 'text-text-muted/40'
+                    ? 'text-accent-depths drop-shadow-[0_0_8px_rgba(79,195,255,0.4)]'
+                    : 'text-text-muted/35'
                 }
               >
                 {rowCounts[rowIdx] ?? 0}
@@ -458,7 +573,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                         }}
                       />
                     )}
-                    <span className="font-mono text-xs font-bold text-accent-depths drop-shadow-[0_0_6px_rgba(79,195,255,0.7)]">
+                    <span className="font-mono text-sm sm:text-base font-bold text-accent-depths drop-shadow-[0_0_6px_rgba(79,195,255,0.7)]">
                       {String(cell.clueValue)}
                     </span>
                   </div>
@@ -467,7 +582,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
               } else if (state === 'deposit-found') {
                 bg = 'bg-accent-depths/20 border-accent-depths cursor-default'
                 textContent = (
-                  <span className="text-base" aria-hidden="true">
+                  <span className="text-base sm:text-xl" aria-hidden="true">
                     {'\uD83D\uDD37'}
                   </span>
                 )
@@ -477,7 +592,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                   'bg-bg-base border-dashed border-text-muted/60 cursor-default'
                 textContent = (
                   <span
-                    className="text-base opacity-40 grayscale"
+                    className="text-base sm:text-xl opacity-40 grayscale"
                     aria-hidden="true"
                   >
                     {'\uD83D\uDD37'}
@@ -488,7 +603,10 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
                 bg =
                   'bg-border-subtle border-border-subtle cursor-default opacity-60'
                 textContent = (
-                  <span className="text-xs text-text-muted" aria-hidden="true">
+                  <span
+                    className="text-xs sm:text-sm text-text-muted"
+                    aria-hidden="true"
+                  >
                     &times;
                   </span>
                 )
