@@ -80,8 +80,9 @@ function resolveBriefing(
         modifierKey: key,
         title: 'Directional',
         bullets: [
-          'Clue tiles display arrows (→, ↘, ↓, ↙, etc.) pointing directly toward the nearest crystal.',
-          'The numbers along the top and left edges indicate the total crystals in that line. Cross-reference them with arrow directions.'
+          'Goal: Tap tiles to dig all hidden crystals. Digging an empty tile wastes a charge and lowers your score.',
+          'Clue arrows (→, ↘, ↓, etc.) point in the 8 compass directions toward the nearest crystal.',
+          'Outer border numbers show the exact total crystals buried in each row and column.'
         ]
       }
     }
@@ -90,8 +91,9 @@ function resolveBriefing(
         modifierKey: key,
         title: 'Hot & Cold',
         bullets: [
-          'Clue tiles display proximity: HOT (≤1 step), WARM (≤3 steps), or COLD (>3 steps).',
-          'Use top and left border counts to eliminate empty rows and columns.'
+          'Goal: Tap tiles to dig all hidden crystals. Digging an empty tile wastes a charge and lowers your score.',
+          'Sensor tiles show distance bands: HOT (1 step away), WARM (2–3 steps), COLD (4+ steps).',
+          'Outer border numbers show the exact total crystals buried in each row and column.'
         ]
       }
     }
@@ -100,8 +102,20 @@ function resolveBriefing(
         modifierKey: key,
         title: 'Adjacency Count',
         bullets: [
-          'Clue tiles indicate the exact number of crystals in the 8 immediately surrounding cells.',
-          'Outer border numbers indicate total crystals in that line.'
+          'Goal: Tap tiles to dig all hidden crystals. Digging an empty tile wastes a charge and lowers your score.',
+          'Numbers indicate how many crystals exist in the 8 neighboring cells touching that tile.',
+          'Outer border numbers show the exact total crystals buried in each row and column.'
+        ]
+      }
+    }
+    if (clueType === 'numeric') {
+      return {
+        modifierKey: key,
+        title: 'Numeric Distance',
+        bullets: [
+          'Goal: Tap tiles to dig all hidden crystals. Digging an empty tile wastes a charge and lowers your score.',
+          'Clue numbers indicate the exact step distance (|row diff| + |col diff|) to the nearest crystal.',
+          'Outer border numbers show the exact total crystals buried in each row and column.'
         ]
       }
     }
