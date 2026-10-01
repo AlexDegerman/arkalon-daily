@@ -67,7 +67,7 @@ Each category maps to a registered puzzle family via a one-entry family registry
 ---
 
 ### Recall
-Watch glyph sequences light up across a 16-symbol runic pool (`◆`, `▲`, `●`, `■`, `★`, `◇`, `▼`, `○`, `⬡`, `✦`, `⬢`, `△`, `◈`, `⊕`, `▣`, `✧`), then reproduce them from memory across three escalating rounds. Features procedural sequences with zero adjacent duplicate symbols, a compressed input time bank ($T = \max(14, (6 + 2N) \times 1.125)\text{ seconds}$) with a decaying visual meter, audio urgency ticks on the final 3 seconds, red missed-rune sequence reveals on timeout, symmetrical keypad matrices ($5 \times 2$, $4 \times 4$), and per-round countdown overlays with reverse-entry warnings.
+Watch glyph sequences light up across a 16-symbol runic pool (`◆`, `▲`, `●`, `■`, `★`, `◇`, `▼`, `○`, `⬡`, `✦`, `⬢`, `△`, `◈`, `⊕`, `▣`, `✧`), then reproduce them from memory across three escalating rounds. Features procedural sequences with zero adjacent duplicate symbols, a compressed input time bank (14s for short sequences up to ~30s for 10-glyph sequences) with a decaying visual meter, audio urgency ticks on the final 3 seconds, red missed-rune sequence reveals on timeout, symmetrical keypad matrices (5x2 and 4x4), and per-round countdown overlays with reverse-entry warnings.
 
 <p align="center">
   <strong>Recall in Action</strong><br/>
@@ -82,10 +82,9 @@ Watch glyph sequences light up across a 16-symbol runic pool (`◆`, `▲`, `●
 
 #### Mechanics & Composition Axes:
 * **Sequence Lengths**: 3 to 12 glyphs across 3 rounds (e.g., [3, 5, 7] up to [6, 9, 12]).
-* **Per-Glyph Display Duration**: 500ms to 1000ms base (with $\pm 12\%$ continuous variance clamped to a hard playability floor of $\ge 450\text{ms}$).
+* **Per-Glyph Display Duration**: 500ms to 1000ms base (with up to 12% continuous variance, clamped to a hard playability floor of 450ms).
 * **Active Pool Size**: Subsets of 8, 10, 12, 14, or 16 symbols.
-* **Scoring Weight**: Weighted continuous model: Round 1 (35%), Round 2 (30%), Round 3 (35%). Speed multiplier scales between $0.85$ and $1.0$:
-  $$\text{speedMult} = \max\left(0.85, 1.0 - \frac{\text{elapsedMs} - 1400N}{3200N - 1400N} \times 0.15\right)$$
+* **Scoring Weight**: Weighted continuous model: Round 1 (35%), Round 2 (30%), Round 3 (35%). A speed multiplier between 0.85 and 1.0 rewards faster completion times.
 
 ---
 
@@ -98,27 +97,27 @@ A continuous reflex survival arena running for 60 seconds (or 45s / 90s dependin
 </p>
 
 #### Unique Seed Archetypes (Spawn Patterns):
-* **`spiral`**: Golden-angle ($137.5^\circ$) inward vortex swirl with orbiting kinetic nodes sweeping toward center.
-* **`wave`**: Sinusoidal rolling wave pattern oscillating across the horizontal axis ($y = 200 + 120\sin(\pi x / 300)$).
+* **`spiral`**: Golden-angle (137.5°) inward vortex swirl with orbiting kinetic nodes sweeping toward center.
+* **`wave`**: Sinusoidal rolling wave pattern oscillating across the horizontal axis.
 * **`lane_switch`**: Top, middle, and bottom corridor tracks with visible dashed boundary rails, alternating randomly between lanes.
 * **`corner_seq`**: Rapid 4-corner screen-width flick jumps testing peripheral reflex and rapid cross-screen re-acquisition.
-* **`triple_burst`**: Clustered 3-node simultaneous spawns with expanded node lifetimes ($1 + 0.35 \times (\text{nodes} - 1)$) to allow multi-target clearing.
+* **`triple_burst`**: Clustered 3-node simultaneous spawns with expanded node lifetimes to allow multi-target clearing.
 * **`paired`**: Symmetrical bilateral mirror spawns requiring rapid dual-target triage.
 * **`center_out`**: 4-node radial shockwave exploding outward from center to perimeter.
 
 #### Mechanics & Composition Axes:
-* **Decoy Targets**: Red nodes (`#ff3b5c`) that deduct 2.0 raw points and instantly reset current combo to zero if struck. Valid challenges maintain decoy ratios below 40%.
-* **Target Behaviors**: `stationary`, `fading` (opacity decays with age), `shrinking` (radius reduces up to 50%), `growing` (radius expands over time), `moving` (linear drift $+35\text{px} \times \text{progress}$), and `brief` (quick fade-in and fade-out).
+* **Decoy Targets**: Red nodes (#ff3b5c) that deduct 2.0 raw points and instantly reset current combo to zero if struck. Valid challenges maintain decoy ratios below 40%.
+* **Target Behaviors**: stationary, fading (opacity decays with age), shrinking (radius reduces up to 50%), growing (radius expands over time), moving (drifts up to 35px over its lifetime), and brief (quick fade-in and fade-out).
 * **Timing Profiles**:
   * `ramp`: Linear spawn interval acceleration from 520ms down to 240ms over 60s.
-  * `sudden_spike`: 420ms pacing jumping abruptly to 220ms at $t = 36\text{s}$.
+  * `sudden_spike`: 420ms pacing jumping abruptly to 220ms at the 36-second mark.
   * `wave`: Sinusoidal tempo oscillation between 220ms and 500ms on a 15-second cycle.
   * `pressure`: Sustained rapid 260ms spawn interval.
   * `endurance`: Steady 320ms tempo across 60 seconds.
   * `mixed`: 15-second intervals cycling unpredictably between 250ms, 340ms, and 440ms.
   * `slow_short`: 420ms spawn tempo over a condensed 45-second session.
   * `fast_long`: 320ms spawn tempo over an extended 90-second marathon.
-* **Combo Multiplier**: $\text{multiplier} = 1.0 + \min(\text{consecutiveHits} \times 0.05, 0.5)$ (max 1.5x at 10+ consecutive hits).
+* **Combo Multiplier**: Starts at 1.0 and grows by 0.05 per consecutive hit, capped at 1.5x after 10 hits.
 
 ---
 
@@ -147,17 +146,16 @@ Deduce transformation rules and structural logic across 7 to 12 escalating round
   * *Distractor Design*: Distractors are crafted near-misses that satisfy all constraints except exactly one.
 * **`tri_variable`**: 3-axis independent cycle deduction. Shape, color, and size rotate on independent, out-of-sync prime periods (shape period 3–5, color period 2–3, size period 2–3). Demands isolating each attribute cycle independently.
 * **`dual_variable`**: 2-axis matrix cycle deduction (shape period 3 cycling against color period 2, with size held constant).
-* **`alternating`**: Binary alternating sequence logic ($A \rightarrow B \rightarrow A \rightarrow B$).
+* **`alternating`**: Binary alternating sequence logic (A → B → A → B).
 
 #### Mechanics & Composition Axes:
 * **Element Attributes**: 6 Shapes (`circle`, `square`, `triangle`, `diamond`, `hexagon`, `star`), 6 Colors (`red`, `blue`, `green`, `yellow`, `purple`, `orange`), 3 Sizes (`small`, `medium`, `large`).
-* **Scoring Formula**:
-  $$\text{Score} = \left(\frac{\text{correctRounds}}{\text{totalRounds}} \times 80\right) + \left(20 \times \max\left(0, 1.0 - \frac{\text{totalIncorrectGuesses}}{\text{totalRounds}}\right)\right)$$
+* **Scoring Formula**: Up to 80 points for correct rounds, plus up to 20 bonus points for avoiding incorrect guesses.
 
 ---
 
 ### Strike
-Fire when a moving reticle crosses the target window on a 600-unit logical track. Enforces a 30% runway constraint ($x \ge 180\text{px}$) so targets never spawn in front of the starting reticle, ensuring immediate first-pass shot opportunities. Features shot 1 countdown overlays, color-coded motion badges, an 800ms grade reveal on the final shot before transition, and debounced ref-based firing via Space, Enter, or the on-screen FIRE button.
+Fire when a moving reticle crosses the target window on a 600-unit logical track. Enforces a 30% runway constraint (the first 180px of the track) so targets never spawn in front of the starting reticle, ensuring immediate first-pass shot opportunities. Features shot 1 countdown overlays, color-coded motion badges, an 800ms grade reveal on the final shot before transition, and debounced ref-based firing via Space, Enter, or the on-screen FIRE button.
 
 <p align="center">
   <strong>Strike in Action</strong><br/>
@@ -165,25 +163,24 @@ Fire when a moving reticle crosses the target window on a 600-unit logical track
 </p>
 
 #### Unique Seed Archetypes (Kinematics Motion Functions):
-* **`deceptive`**: Multi-phase feint kinematics. The reticle approaches linearly up to 100px before the target, decelerates to 30% speed for 300ms, reverses backwards at -25% velocity for 200ms, and then accelerates forward through the target at $1.2\times$ velocity.
+* **`deceptive`**: Multi-phase feint kinematics. The reticle approaches linearly up to 100px before the target, decelerates to 30% speed for 300ms, reverses backwards at -25% velocity for 200ms, and then accelerates forward through the target at 1.2x velocity.
 * **`staccato`**: Stepper-motor tracking. Advances in rapid 250ms bursts punctuated by 150ms dead-stops, requiring players to predict whether the reticle will pause inside or skip over the target window.
-* **`pendulum`**: Harmonic gravity release ($x(t) = 300 - 260\cos(\omega t)$). Starts at rest from the left apex ($x = 40\text{px}, v = 0$), sweeping at peak kinetic velocity through center and decelerating at the edges.
-* **`erratic`**: High-frequency dual-sine vibration wave ($x_{\text{linear}} + 10\sin(7.3t) + 6\sin(13.1t)$) producing jittery, unpredictable reticle flutter.
-* **`sinusoidal`**: Smooth harmonic wave oscillation across the track width ($300 + 250\sin(2\pi f t \cdot v)$ with seeded frequency $f \in [0.3, 0.8]\text{Hz}$).
-* **`linear`**: High-velocity constant-speed passes ($1.8\times – 2.3\times$) bouncing off track edges.
+* **`pendulum`**: Harmonic gravity release. Starts at rest from the left apex, sweeps at peak velocity through the center, and decelerates at the edges like a real pendulum.
+* **`erratic`**: High-frequency dual-sine vibration producing jittery, unpredictable reticle flutter.
+* **`sinusoidal`**: Smooth harmonic wave oscillation across the track width at a seeded frequency between 0.3 Hz and 0.8 Hz.
+* **`linear`**: High-velocity constant-speed passes (1.8×–2.3×) bouncing off track edges.
 
 #### Mechanics & Composition Axes:
 * **Shot Counts**: 15 to 30 shots per session.
 * **Target Windows**: 32px to 60px target zones.
-* **Reticle Speeds**: $1.4\times$ to $2.3\times$ multipliers ($280\text{px/s}$ to $460\text{px/s}$).
+* **Reticle Speeds**: 1.4x to 2.3x multipliers (280px/s to 460px/s).
 * **Deviation Grades**:
-  * `PERFECT` ($< 5\text{px}$ deviation): $1.0\times$ value
-  * `EXCELLENT` ($< 15\text{px}$ deviation): $0.8\times$ value
-  * `GOOD` ($< 50\%$ target window): $0.55\times$ value
-  * `EARLY / LATE` ($< 100\%$ target window): $0.25\times$ value
-  * `MISS` ($\ge$ target window): $0.0\times$ value
-* **Scoring Formula**:
-  $$\text{Score} = \sum_{i=1}^{\text{shots}} \left(\text{grade}_i \times \frac{100}{\text{shots}}\right)$$
+  * `PERFECT` (under 5px deviation): 1.0x value
+  * `EXCELLENT` (under 15px deviation): 0.8x value
+  * `GOOD` (within half the target window): 0.55x value
+  * `EARLY / LATE` (within the full target window): 0.25x value
+  * `MISS` (outside the target window): 0.0x value
+* **Scoring Formula**: Each shot carries an equal share of the score, scaled by its deviation grade (1.0 / 0.8 / 0.55 / 0.25 / 0.0); the session score is the sum of all shots.
 
 ---
 
@@ -196,9 +193,9 @@ A pure, untimed spatial deduction puzzle built on the Seismic Matrix system. Fea
 </p>
 
 #### Unique Seed Archetypes (Sensor Clue Types):
-* **`numeric`**: Manhattan distance rings ($|r_1 - r_2| + |c_1 - c_2|$) indicating the exact distance to the nearest crystal.
+* **`numeric`**: Manhattan distance rings indicating the exact number of row + column steps to the nearest crystal.
 * **`directional`**: 8-way compass vector arrows (`→`, `↘`, `↓`, `↙`, `←`, `↖`, `↑`, `↗`) pointing directly toward the nearest crystal.
-* **`hot_cold`**: Thermal radar bands based on Manhattan distance: `HOT` ($\le 1$), `WARM` ($\le 3$), `COLD` ($> 3$).
+* **`hot_cold`**: Thermal radar bands based on Manhattan distance: `HOT` (1 step or closer), `WARM` (3 steps or closer), `COLD` (farther than 3).
 * **`adjacency_count`**: Moore neighborhood 8-cell surrounding mine counts (0 to 8).
 
 #### Deposit Topology Templates:
@@ -207,19 +204,16 @@ A pure, untimed spatial deduction puzzle built on the Seismic Matrix system. Fea
 * **`diagonal_line`**: Formations aligned along primary diagonals.
 * **`edges_only`**: Crystals confined strictly to the outer perimeter border tiles.
 * **`center_mass`**: Formations confined strictly within the central radius.
-* **`corners`**: Formations partitioned among the four $2 \times 2$ corner zones.
+* **`corners`**: Crystals partitioned among the four 2x2 corner zones.
 * **`l_shape`**: Orthogonal intersecting arms forming an L-shaped vein.
 * **`split`**: Bisected field splitting deposits evenly between left and right halves.
 
 #### Mechanics & Composition Axes:
 * **Grid Sizes**: 5×5 (Base Config 0 & Trials), 6×6, and 7×7 matrices.
 * **Active Sonar Principle**: Digging an empty tile triggers a sonar ping that **always reveals the numeric Manhattan distance** from that specific tile to the nearest deposit, providing instant triangulation data regardless of the board's baseline clue type.
-* **Charge Limit Formula**:
-  $$\text{Charge Limit} = \text{depositCount} + \text{cluePenalty}[\text{clueType}] + \lfloor\text{gridSize}^2 \times 0.08\rfloor$$
-  *(where penalties are: numeric = 0, directional = 2, adjacency_count = 1, hot_cold = 3)*
-* **Scoring Formula**:
-  $$\text{Score} = \left(\frac{\text{depositsFound}}{\text{totalDeposits}} \times 80\right) + \left(20 \times \max\left(0, 1.0 - \frac{\text{wastedCharges}}{\text{maxWaste}}\right)\right)$$
-  *(where $\text{wastedCharges} = \text{chargesUsed} - \text{depositsFound}$ and $\text{maxWaste} = \text{chargeLimit} - \text{totalDeposits}$)*
+* **Charge Budget**:
+  Each stage grants enough charges to excavate all crystals plus a calibrated buffer of **3 to 4 allowed mistakes** (with one extra cushion for directional and hot/cold clues).
+* **Scoring Formula**: Up to 80 points for finding crystals, plus up to 20 bonus points for wasting fewer digging charges.
 
 ---
 
@@ -228,14 +222,14 @@ A pure, untimed spatial deduction puzzle built on the Seismic Matrix system. Fea
 The core engineering challenge: identical challenges for every player, fairly, without any server-side game tick.
 
 - **Daily seeds** derive from `HMAC-SHA256(secret, "YYYY-MM-DD:category")` and are consumed server-side by `mulberry32`, a 32-bit seeded PRNG. The raw seed never reaches the client.
-- **Base configurations**: each category ships 15 hand-crafted base configurations. Continuous-parameter variation (timing $\pm 12\%$, windows $\pm 10\%$, speed $\pm 8\%$) produces 200+ meaningfully distinct daily instances per category.
+- **Base configurations**: each category ships 15 hand-crafted base configurations. Continuous-parameter variation (timing up to 12%, windows up to 10%, speed up to 8%) produces 200+ meaningfully distinct daily instances per category.
 - **Validation and retry**: every generated challenge passes a per-family validator before acceptance. Rejections re-seed with a deterministic counter prefix (`attempt.toString(16) + baseSeed.slice(2)`), so the accepted instance is identical for all players regardless of how many attempts were needed.
 - **Seed persistence**: a VPS crontab at 00:00 UTC hits a secret-protected route (`/api/cron/generate-daily`) to persist the day's `daily_puzzles` rows before the first player arrives.
 
 Validator highlights per family:
 - **Recall**: Enforces a 450ms per-glyph display floor, pool containment, and zero consecutive duplicate symbols.
 - **Surge**: Rejects decoy ratios exceeding 40% and combinations of pressure timing with splitting behavior.
-- **Strike**: Rejects deceptive motion at $2.5\times+$ speed with target windows narrower than 25px.
+- **Strike**: Rejects deceptive motion above 2.5x speed with target windows narrower than 25px.
 - **Cipher**: Rejects duplicate choices, choices missing the correct answer, and monotone single-generator sessions.
 - **Depths**: Runs a full clue-elimination solvability proof, verifying that the grid can be deduced within the charge limit, and rejects degenerate hot/cold layouts.
 
@@ -247,11 +241,11 @@ All scoring is server-authoritative. Clients submit raw performance metrics; the
 
 | Puzzle | Model | Formula Summary |
 |---|---|---|
-| **Recall** | Continuous | Sum of round weights [35, 30, 35] $\times$ accuracy $\times$ speed multiplier (0.85–1.0) |
-| **Surge** | Speed-first | $\sum (100 / \text{expectedNodes}) \times \text{reactionGrade} \times \text{comboMultiplier} - (2.0 \times \text{decoyHits})$ |
-| **Strike** | Speed-first | $\sum (100 / \text{shots}) \times \text{deviationGrade}$ (1.0 / 0.8 / 0.55 / 0.25 / 0.0) |
-| **Cipher** | Logic-first | $(\text{accuracy} \times 80) + (20 \times \text{errorEfficiencyBonus})$ |
-| **Depths** | Logic-first | $(\text{discovery} \times 80) + (20 \times \text{chargeEfficiencyBonus})$ |
+| **Recall** | Continuous | Weighted round scores (35/30/35) × accuracy × speed multiplier (0.85–1.0) |
+| **Surge** | Speed-first | Points per node × reaction grade × combo multiplier, minus 2 points per decoy hit |
+| **Strike** | Speed-first | Points per shot × deviation grade (1.0 / 0.8 / 0.55 / 0.25 / 0.0) |
+| **Cipher** | Logic-first | Up to 80 points for accuracy + up to 20 points for guess efficiency |
+| **Depths** | Logic-first | Up to 80 points for discovery + up to 20 points for charge efficiency |
 
 Scores map to a 12-tier visual shader hierarchy (from Slate Steel up to Solar Prominence and Royal Treasure Pile) and 5 rarity tiers (Common through Mythical/Rainbow). A score of 15 or higher (`STREAK_MIN_SCORE`) counts as a solve and preserves a streak; lower scores or missing days break it.
 
@@ -269,7 +263,7 @@ First contact with each category opens a Trial: a multi-screen explainer followe
 
 - **Daily Boards**: Top 50 per category ordered by score descending, then elapsed time ascending. Exact rank is computed for players outside the top 50. A daily family index displays alongside each entry.
 - **Weekly & All-Time Tiers**: Fully operational aggregate rankings with instant qualification:
-  * *Universal Qualification*: Clearing **1 puzzle** ($\text{score} \ge 15$) instantly ranks players across Daily, Weekly, and All-Time boards.
+  * *Universal Qualification*: Clearing **1 puzzle** (score of 15 or higher) instantly ranks players across Daily, Weekly, and All-Time boards.
   * *Category Boards*: Ordered primarily by Average Score (`AVG`), with clears and best score acting as tiebreakers.
   * *TOTAL Scope*: The cross-category leaderboard orders primarily by **Total Points (`PTS`)**, rewarding players who show up daily and compete across all five disciplines. Surfacing per-category clear pips for each player row.
   * *Metrics Displayed*: Average score, clears count, best score, total points, and active streak days.

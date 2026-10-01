@@ -43,13 +43,13 @@ export const DEPTHS_BASE_CONFIGS: DepthsBaseConfig[] = [
   },
   {
     gridSize: 6,
-    depositCount: 4,
+    depositCount: 5,
     clueType: 'hot_cold',
     depositPattern: 'scattered'
   },
   {
     gridSize: 6,
-    depositCount: 4,
+    depositCount: 5,
     clueType: 'numeric',
     depositPattern: 'l_shape'
   },
@@ -73,13 +73,13 @@ export const DEPTHS_BASE_CONFIGS: DepthsBaseConfig[] = [
   },
   {
     gridSize: 7,
-    depositCount: 4,
+    depositCount: 6,
     clueType: 'hot_cold',
     depositPattern: 'scattered'
   },
   {
     gridSize: 7,
-    depositCount: 5,
+    depositCount: 6,
     clueType: 'numeric',
     depositPattern: 'split'
   },

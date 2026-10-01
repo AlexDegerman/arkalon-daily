@@ -14,7 +14,6 @@ export type SoundKey =
   | 'surge-end'
   | 'crystal-found'
   | 'dig-empty'
-  | 'mark-tile'
   | 'cipher-next'
   | 'timer-tick'
   | 'result-mythical'
@@ -39,7 +38,6 @@ const SOUND_MAP: Record<SoundKey, string> = {
   'surge-end': '/sounds/surge-end.mp3',
   'crystal-found': '/sounds/crystal-found.mp3',
   'dig-empty': '/sounds/dig-empty.mp3',
-  'mark-tile': '/sounds/mark-tile.mp3',
   'cipher-next': '/sounds/cipher-next.wav',
   'timer-tick': '/sounds/timer-tick.mp3',
   'result-mythical': '/sounds/result_mythical.mp3',
@@ -57,7 +55,6 @@ const SOUND_MAP: Record<SoundKey, string> = {
 // Sounds missing from this map use the default volume.
 // Add an entry only when a specific effect needs attenuation.
 const VOLUME_MULTIPLIERS: Partial<Record<SoundKey, number>> = {
-  'mark-tile': 0.6,
   'surge-end': 0.6
 }
 

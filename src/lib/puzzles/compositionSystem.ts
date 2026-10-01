@@ -73,17 +73,14 @@ export function calcChargeLimit(
   depositCount: number,
   clueType: ClueTypeId
 ): number {
-  const clueTypePenalty: Record<ClueTypeId, number> = {
+  // Base buffer gives ~3 allowed mistakes, with +1 extra cushion for less precise clue types
+  const clueBonus: Record<ClueTypeId, number> = {
     numeric: 0,
-    directional: 2,
-    adjacency_count: 1,
-    hot_cold: 3
+    adjacency_count: 0,
+    directional: 1,
+    hot_cold: 1
   }
-  return (
-    depositCount +
-    clueTypePenalty[clueType] +
-    Math.floor(gridSize * gridSize * 0.08)
-  )
+  return depositCount + 3 + clueBonus[clueType]
 }
 
 // Clue tile count for Crystal Mine

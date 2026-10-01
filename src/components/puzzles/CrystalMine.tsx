@@ -15,7 +15,7 @@ const CLUE_TYPE_INFO: Record<ClueTypeId, { name: string; detail: string }> = {
   numeric: {
     name: 'Numeric Distance',
     detail:
-      'Numbers indicate Manhattan distance (|dr| + |dc|) to the closest crystal. Excavating an empty tile also pings its numeric distance.'
+      'Numbers indicate how many steps away (up, down, left, right) the closest crystal is. Excavating an empty tile also pings its distance.'
   },
   directional: {
     name: 'Directional',
@@ -25,12 +25,12 @@ const CLUE_TYPE_INFO: Record<ClueTypeId, { name: string; detail: string }> = {
   hot_cold: {
     name: 'Hot & Cold',
     detail:
-      'Clues show distance bands: HOT = 1 step away, WARM = 2–3 steps away, COLD = 4+ steps away from a crystal.'
+      'Clues show distance bands: HOT = 1 step away, WARM = 2-3 steps away, COLD = 4+ steps away from a crystal.'
   },
   adjacency_count: {
     name: 'Adjacency Count',
     detail:
-      'Minesweeper-style: numbers indicate exactly how many crystals exist in the 8 immediately surrounding adjacent cells.'
+      'Numbers reveal how many crystals are hidden in the 8 surrounding neighbor cells (orthogonal and diagonal).'
   }
 }
 
@@ -77,6 +77,7 @@ function getCellState(
 const AUTO_REVEAL_STAGGER_MS = 140
 const AUTO_REVEAL_VIEW_MS = 2200
 interface SavedDepthsSession {
+  fingerprint: string
   revealedKeys: string[]
   markedKeys?: string[]
   chargesUsed: number
@@ -85,7 +86,9 @@ interface SavedDepthsSession {
   date: string
 }
 
-function getSavedDepthsSession(): SavedDepthsSession | null {
+function getSavedDepthsSession(
+  expectedFingerprint: string
+): SavedDepthsSession | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem('arkalon_daily_depths_session')
@@ -93,6 +96,11 @@ function getSavedDepthsSession(): SavedDepthsSession | null {
     const parsed = JSON.parse(raw)
     const today = new Date().toISOString().slice(0, 10)
     if (parsed.date !== today) return null
+    // Discard session if it belongs to a different puzzle layout or rotated seed
+    if (parsed.fingerprint !== expectedFingerprint) {
+      localStorage.removeItem('arkalon_daily_depths_session')
+      return null
+    }
     return parsed
   } catch {
     return null
@@ -101,8 +109,16 @@ function getSavedDepthsSession(): SavedDepthsSession | null {
 
 export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   const { play } = useSound()
+
+  // Unique fingerprint identifies this exact board layout and seed
+  const puzzleFingerprint = useMemo(() => {
+    const rows = (data.rowCounts ?? []).join('')
+    const cols = (data.colCounts ?? []).join('')
+    return `${data.gridSize}_${data.depositCount}_${data.chargeLimit}_${data.clueType}_${rows}_${cols}`
+  }, [data])
+
   const [savedSession] = useState(() =>
-    isTrial ? null : getSavedDepthsSession()
+    isTrial ? null : getSavedDepthsSession(puzzleFingerprint)
   )
   const [isMarking, setIsMarking] = useState(false)
   const [marked, setMarked] = useState<Set<string>>(() => {
@@ -117,30 +133,19 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressFiredRef = useRef(false)
 
-  // Deposits revealed at start are free finds - they never cost a charge
-  const preRevealedDeposits = data.grid
-    .flat()
-    .filter((c) => c.isDeposit && c.isRevealed && !c.isClue).length
-
   // Track which non-clue cells have been excavated
   const [revealed, setRevealed] = useState<Set<string>>(() => {
     if (savedSession?.revealedKeys) {
       return new Set(savedSession.revealedKeys)
     }
-    const initial = new Set<string>()
-    data.grid.flat().forEach((cell) => {
-      if (cell.isRevealed && !cell.isClue) {
-        initial.add(`${cell.row},${cell.col}`)
-      }
-    })
-    return initial
+    return new Set<string>()
   })
 
   const [chargesUsed, setChargesUsed] = useState(
     () => savedSession?.chargesUsed ?? 0
   )
   const [depositsFound, setDepositsFound] = useState(
-    () => savedSession?.depositsFound ?? preRevealedDeposits
+    () => savedSession?.depositsFound ?? 0
   )
   const [finished, setFinished] = useState(false)
   const sessionStartRef = useRef(Date.now() - (savedSession?.elapsedMs ?? 0))
@@ -188,6 +193,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       localStorage.setItem(
         'arkalon_daily_depths_session',
         JSON.stringify({
+          fingerprint: puzzleFingerprint,
           revealedKeys: Array.from(revealed),
           markedKeys: Array.from(marked),
           chargesUsed,
@@ -199,7 +205,15 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
     } catch {
       // localStorage unavailable
     }
-  }, [revealed, marked, chargesUsed, depositsFound, isTrial, finished])
+  }, [
+    revealed,
+    marked,
+    chargesUsed,
+    depositsFound,
+    isTrial,
+    finished,
+    puzzleFingerprint
+  ])
 
   useEffect(() => {
     if (isTrial || finished) return
@@ -209,9 +223,8 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         localStorage.removeItem('arkalon_daily_depths_session')
       } catch {}
       const totalElapsedMs = Date.now() - sessionStartRef.current
-      const wastedCharges = chargesUsed - (depositsFound - preRevealedDeposits)
-      const maxWaste =
-        data.chargeLimit - data.depositCount + preRevealedDeposits
+      const wastedCharges = chargesUsed - depositsFound
+      const maxWaste = data.chargeLimit - data.depositCount
       const efficiencyPct =
         maxWaste > 0
           ? Math.round(Math.max(0, (1 - wastedCharges / maxWaste) * 100))
@@ -228,15 +241,7 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
         efficiencyPct
       })
     }
-  }, [
-    depositsFound,
-    chargesUsed,
-    data,
-    isTrial,
-    finished,
-    onComplete,
-    preRevealedDeposits
-  ])
+  }, [depositsFound, chargesUsed, data, isTrial, finished, onComplete])
 
   const handleCellClick = useCallback(
     (cell: GridCell) => {
@@ -289,10 +294,8 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
           localStorage.removeItem('arkalon_daily_depths_session')
         } catch {}
         const totalElapsedMs = Date.now() - sessionStartRef.current
-        const wastedCharges =
-          newCharges - (newDepositsFound - preRevealedDeposits)
-        const maxWaste =
-          data.chargeLimit - data.depositCount + preRevealedDeposits
+        const wastedCharges = newCharges - newDepositsFound
+        const maxWaste = data.chargeLimit - data.depositCount
         const efficiencyPct =
           maxWaste > 0
             ? Math.round(Math.max(0, (1 - wastedCharges / maxWaste) * 100))
@@ -307,10 +310,10 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
           : allDeposits
               .filter((d) => !newRevealed.has(`${d.row},${d.col}`))
               .map((d) => `${d.row},${d.col}`)
-            if (remaining.length > 0) {
-              setAutoRevealKeys(remaining)
-              play('incorrect')
-            }
+        if (remaining.length > 0) {
+          setAutoRevealKeys(remaining)
+          play('incorrect')
+        }
         const resultDelayMs =
           remaining.length > 0
             ? remaining.length * AUTO_REVEAL_STAGGER_MS +
@@ -340,7 +343,6 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
       onComplete,
       isMarking,
       toggleMark,
-      preRevealedDeposits
     ]
   )
 
@@ -414,30 +416,61 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
     >
       {isTrial && <TrialBanner />}
 
-      {/* Streamlined Status bar with Interactive Clue Tooltip */}
-      <div className="flex items-center justify-between text-xs text-text-muted font-mono">
+      {/* Row 1: Objective Counters & Dig/Cross Toggle */}
+      <div className="flex items-center justify-between text-xs font-mono">
+        <span className="flex items-center gap-1.5 font-bold text-text-primary whitespace-nowrap shrink-0">
+          <span>{'\uD83D\uDD37'}</span>
+          <span>
+            {depositsFound}/{data.depositCount}
+          </span>
+        </span>
+
+        <button
+          onClick={() => setIsMarking((m) => !m)}
+          className={`px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0 ${
+            isMarking
+              ? 'border-text-muted/60 bg-surface-hover text-text-primary'
+              : 'border-border-subtle bg-surface-panel text-text-muted hover:text-text-primary'
+          }`}
+        >
+          {isMarking ? '✖ Cross' : '⛏️ Dig'}
+        </button>
+
+        <span className="font-mono text-xs whitespace-nowrap shrink-0 text-text-muted">
+          Charges:{' '}
+          <span
+            className={`font-bold ${
+              chargesRemaining <= 2 ? 'text-status-fail' : 'text-text-primary'
+            }`}
+          >
+            {chargesRemaining}
+          </span>
+        </span>
+      </div>
+
+      {/* Row 2: Clue Type & Integrated Marking Hint */}
+      <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
         <div
-          className="relative flex items-center gap-1.5 sm:gap-2"
+          className="relative flex items-center gap-1.5 shrink-0"
           ref={clueTooltipRef}
         >
-          <span className="text-text-primary font-bold">
-            {'\uD83D\uDD37'} {depositsFound}/{data.depositCount}
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-mono">
+            Clue:
           </span>
-          <span className="text-border-subtle">·</span>
           <button
             type="button"
             onClick={() => setShowClueTooltip((v) => !v)}
             onMouseEnter={() => setShowClueTooltip(true)}
             onMouseLeave={() => setShowClueTooltip(false)}
             aria-label="Clue type explanation"
-            className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle bg-surface-panel hover:border-accent-depths transition-colors cursor-pointer"
+            className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle bg-surface-panel hover:border-accent-depths transition-colors cursor-pointer whitespace-nowrap"
           >
-            <span className="font-bold uppercase text-[10px] sm:text-[11px] text-accent-depths tracking-wide">
+            <span className="font-bold uppercase text-[10px] sm:text-[11px] text-accent-depths tracking-wide font-mono">
               {clueInfo.name}
             </span>
             <HelpCircle
               size={11}
-              className="text-text-muted group-hover:text-accent-depths transition-colors"
+              className="text-text-muted group-hover:text-accent-depths transition-colors shrink-0"
             />
           </button>
 
@@ -456,33 +489,10 @@ export function CrystalMine({ data, isTrial, onComplete }: CrystalMineProps) {
           )}
         </div>
 
-        <button
-          onClick={() => setIsMarking((m) => !m)}
-          className={`px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-            isMarking
-              ? 'border-text-muted/60 bg-surface-hover text-text-primary'
-              : 'border-border-subtle bg-surface-panel text-text-muted hover:text-text-primary'
-          }`}
-        >
-          {isMarking ? '✖ Cross' : '⛏️ Dig'}
-        </button>
-
-        <span>
-          Charges:{' '}
-          <span
-            className={`font-bold ${
-              chargesRemaining <= 2 ? 'text-status-fail' : 'text-text-primary'
-            }`}
-          >
-            {chargesRemaining}
-          </span>
+        <span className="text-[10px] sm:text-[11px] text-text-muted/70 truncate text-right">
+          Hold tile to cross out (✖)
         </span>
       </div>
-
-      {/* Marking hint */}
-      <p className="text-[11px] sm:text-xs text-text-muted">
-        Right-click or hold a tile to cross it out (✖) as empty
-      </p>
       {autoRevealKeys.length > 0 && (
         <p
           className="text-center text-xs font-mono font-bold text-[#F59E0B]"

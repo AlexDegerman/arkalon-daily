@@ -11,20 +11,20 @@ import {
 } from '@/lib/puzzles/compositionSystem'
 
 describe('calcChargeLimit', () => {
-  it('applies no penalty for numeric clues', () => {
-    expect(calcChargeLimit(5, 3, 'numeric')).toBe(5)
+  it('applies a base buffer of 3 for numeric clues', () => {
+    expect(calcChargeLimit(5, 3, 'numeric')).toBe(6)
   })
 
-  it('applies +2 penalty for directional clues', () => {
+  it('applies +1 extra cushion for directional clues', () => {
     expect(calcChargeLimit(5, 3, 'directional')).toBe(7)
   })
 
-  it('applies +1 penalty for adjacency_count clues', () => {
+  it('applies a base buffer of 3 for adjacency_count clues', () => {
     expect(calcChargeLimit(6, 4, 'adjacency_count')).toBe(7)
   })
 
-  it('applies +3 penalty for hot_cold clues', () => {
-    expect(calcChargeLimit(7, 6, 'hot_cold')).toBe(12)
+  it('applies +1 extra cushion for hot_cold clues', () => {
+    expect(calcChargeLimit(7, 6, 'hot_cold')).toBe(10)
   })
 })
 

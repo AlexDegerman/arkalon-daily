@@ -114,7 +114,7 @@ function resolveBriefing(
         title: 'Numeric Distance',
         bullets: [
           'Goal: Tap tiles to dig all hidden crystals. Digging an empty tile wastes a charge and lowers your score.',
-          'Clue numbers indicate the exact step distance (|row diff| + |col diff|) to the nearest crystal.',
+          'Clue numbers show the exact grid steps (up, down, left, right) to the closest crystal.',
           'Outer border numbers show the exact total crystals buried in each row and column.'
         ]
       }
